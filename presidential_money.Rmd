@@ -1,0 +1,595 @@
+---
+title: "presidential_money"
+author: "martin-martin"
+date: "29 Februar 2016"
+output: html_document
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# loading the packages I use
+library(ggplot2)
+library(reshape2)
+```
+
+# Dollars for Votes - the US presidential elections
+by Martin
+========================================================
+
+I'm currently spending my time in the USA, and it's (pre-)election time! Having a memebership to a 24h gym gets me exposed to a massive amount of politics on TV while I'm doing my time on the crosstrainer or even when I'm just changing in the dressing room.
+It's February, the elections are in November, but there is a near-constant broadcast of candidates battling each other on CNN.
+
+I'm impressed and surprised about this omnipresence of the elections on TV, already so early on. And I'm concerned about the rudeness that these debates often display. Politics in Europe are different. They're not golden, nope. And there are insults and dirty tricks played also there. But here in the US there's a level of "attack", "aggression" and "god" in the talks, that I am thoroughly not used to. :/
+
+One of the times while in the dressing room, I got stuck watching the TV talk about **Dollars per Vote**, and found this comparison very interesting. Some candidates spend very little money as compared to others in absolute, and yet in the end some end up spending still more money _per vote_ received.
+
+Now, my analysis will not deal with this comparison, since the ballots have not been cast yet (for a few months...), but I will make a preliminary analysis of the money that the presidential candidates were receiving from individual contributors in the run-up for the presidency.
+
+## Pt. 0: The Data
+
+The data for the 2016 Presidential Campaign Contributions can be found here: http://fec.gov/disclosurep/PDownload.do
+Since I am currently in California, I chose and downloaded the dataset for `CA.zip`.
+
+Here's also a peek at the structure of the data that the .csv contains. It's an excerpt from this file: ftp://ftp.fec.gov/FEC/Presidential_Map/2016/DATA_DICTIONARIES/CONTRIBUTOR_FORMAT.txt
+I have also indicated which of the columns I ended up dropping.
+
+```
+The text file is comma delimited and uses double-quotation marks as the text qualifier.
+
+------------------------------------------------------------------------ 
+
+CMTE_ID			        COMMITTEE ID				                      S <- dropped
+CAND_ID			        CANDIDATE ID				                      S
+CAND_NM			        CANDIDATE NAME				                    S
+CONTBR_NM		        CONTRIBUTOR NAME			                    S
+CONTBR_CITY		      CONTRIBUTOR CITY			                    S
+CONTBR_ST		        CONTRIBUTOR STATE			                    S <- dropped
+CONTBR_ZIP		      CONTRIBUTOR ZIP CODE			                S
+CONTBR_EMPLOYER		  CONTRIBUTOR EMPLOYER			                S
+CONTBR_OCCUPATION	  CONTRIBUTOR OCCUPATION			              S
+CONTB_RECEIPT_AMT	  CONTRIBUTION RECEIPT AMOUNT		            N
+CONTB_RECEIPT_DT	  CONTRIBUTION RECEIPT DATE		              D	
+RECEIPT_DESC		    RECEIPT DESCRIPTION			                  S <- dropped
+MEMO_CD			        MEMO CODE				                          S <- dropped
+MEMO_TEXT		        MEMO TEXT				                          S <- dropped
+FORM_TP			        FORM TYPE				                          S <- dropped
+FILE_NUM		        FILE NUMBER				                        N <- dropped
+TRAN_ID			        TRANSACTION ID				                    S <- dropped
+ELECTION_TP		      ELECTION TYPE/PRIMARY GENERAL INDICATOR   S <- dropped
+
+
+Data Type:  S = string (alpha or alpha-numeric); D = date; N = numeric  
+
+------------------------------------------------------------------------ 
+```
+
+One thing that becomes very obvious here, and that strongly influenced my exploration, is that there is **only one column containing numerical variables**: `contb_receipt_amt`.
+
+This is the column that holds the amounts of the contributions in $, and it is therefore also one of the most interesting columns. A lot of comparisons were anchored to it.
+
+However, there is also another "hidden" numerical value associated with the dataset, and that is the **number of rows**, that allows many graphs to be created in combination with the categorical values of the other columns.
+
+### Ideas and Interests that I will explore
+
++ Who got the most contributions? Which person, which party, which gender?
+
+- Which city contributed the most, and to whom (also: in relation to the number of citizens)
+
+- How many "NOT EMPLOYED" people contributed to the campaigns as compared to people with employment; Also: whom did the "NOT EMPLOYED" support the most?
+
+## Pt. 1: Mini-Wrangling
+
+In order to be able to load the data, I had to add a comma at the end of the header row in my .csv file.
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+setwd('~/Desktop/p4_US_campaign_funding')
+df <- read.csv('P00000001-CA.csv')
+names(df)
+```
+
+### Adding new columns: cand_gender and cand_party
+
+For some of my questions, I am interested to take a look at the data also depending on the gender and the party affiliation of the different candidates. Since these columns are not present in the dataset, I went to gather the required information online and added it as two new columns to my data.frame `df`.
+
+```{r echo=FALSE, Adding_Columns}
+## PART1 - Mapping
+# First I'll be mapping Candidate names to Candidate IDs. This I'll do so that I will be able to refer to a cand_id when passing a function, which is easier than writing out the full name.
+
+# select only rows that are not duplicates in the cand_id value
+candidates <- df[!duplicated(df$cand_id), ]
+# define which columns to keep
+keeps <- c("cand_id", "cand_nm")
+# assigning the new mapping data.frame to a variable
+cand_id_map <- candidates[keeps]
+#cand_id_map
+
+# how many candidates are in the primaries?
+#nrow(cand_id_map)
+
+# I'd also like to have the party associated with the candidate
+democrats <- c('P60007168', 'P00003392', 'P60009685', 'P60008885', 'P60007671')
+republicans <- c('P60006723', 'P60008521', 'P60008059', 'P60005915', 'P60003670', 'P80001571', 'P60007242', 'P60006111', 'P40003576', 'P20002721', 'P60008398', 'P80003478', 'P60007572', 'P60007697', 'P20003281', 'P60006046')
+greens <- c('P20003984')
+
+# double checking
+#all_cands <- c(democrats, republicans, greens)
+#duplicated(all_cands)
+#nrow(cand_id_map) == length(democrats) + length(republicans) + length(greens)
+
+
+## PART2 - Adding the Columns
+# so now I can add this new column to the df.
+# there is one member of the green party 'G', the republicans will get the value 'R'
+# and the democrats the value 'D'
+df$cand_party <- ifelse(df$cand_nm != 'Stein, Jill', ifelse(df$cand_id %in% republicans, "R", "D"), "G")
+#head(subset(df, cand_party == "G"))
+
+# and also the gender of the candidate
+female <- c('Fiorina, Carly', 'Clinton, Hillary Rodham', 'Stein, Jill')
+# adding a new column to the df
+df$cand_gender <- ifelse(df$cand_nm %in% female, "F", "M")
+
+# checking it out
+#head(subset(df, cand_nm == 'Fiorina, Carly'))
+#names(df)
+```
+
+### Removing obsolete columns
+
+There is quite a big amount of data that I am not intending to use for my exploration. These include e.g. `conbr_st`, which is in my case always `CA`, or `file_num`, a unique number used to link the transactions to the reports (which I'll also drop).
+
+```{r echo=FALSE, Removing_Columns}
+discard <- c('cmte_id', 'contbr_st', 'receipt_desc', 'memo_cd', 'memo_text', 'form_tp', 'file_num', 'election_tp', 'X')
+df <- df[ , !(names(df) %in% discard)]
+#names(df)
+```
+
+## Pt. 2: Exploration
+
+After having cleaned and adapted the dataset to my wishes, I can start into my exploration.
+
+For example, I can query how many individual contributions did each candidate receive:
+
+```{r echo=FALSE First_Steps}
+# E.g. for Hillary Clinton:
+sum(df$cand_id == 'P00003392')
+```
+
+Or how many and how much did males vs. females receive:
+
+```{r echo=FALSE}
+# number of contributions per gender of candidate
+ggplot(df, aes(cand_gender)) + geom_bar() + scale_x_discrete()
+# total amount of money through contributions per gender of candidate
+gender_money <- aggregate(contb_receipt_amt ~ cand_gender, data = df, sum)
+#head(gender_money)
+ggplot(gender_money, aes(cand_gender, contb_receipt_amt)) + 
+  geom_bar(stat='identity', fill = c('pink', 'lightblue')) + scale_x_discrete()
+# whoa! seems that females received nearly as much money in contributions as males did, even though there are only 3 female vs. 19 male candidates + there were way less fewer contributions to femal candidates than to male candidates
+
+# so it could be interesting to take a look at the mean contribution per F/M cand
+summary(subset(df, cand_gender == 'F')$contb_receipt_amt)
+summary(subset(df, cand_gender == 'M')$contb_receipt_amt)
+
+summary(df$contb_receipt_amt)
+# min = -10000 and max = 10800
+# i'll start with a generous binwidth of 1000
+seq(0, 11000, by = 1000)
+# making bins for all the money
+df$money_bin <- cut(df$contb_receipt_amt, breaks = seq(0, 11000, by = 1000))
+head(df)
+# we can make this look nicer using a function:
+money.cat <- function(x, lower = 0, upper, by = 1000,
+                   sep = "-", above.char = "+") {
+
+ labs <- c(paste(seq(lower, upper - by, by = by),
+                 seq(lower + by - 1, upper - 1, by = by),
+                 sep = sep),
+           paste(upper, above.char, sep = ""))
+
+ cut(floor(x), breaks = c(seq(lower, upper, by = by), Inf),
+     right = FALSE, labels = labs)
+}
+
+# and assign the values with the prettified labels to the new colum
+df$money_bin <- money.cat(df$contb_receipt_amt, upper = 11000)
+head(df)
+# looks better now :)
+
+ggplot(df, aes(money_bin)) + geom_count()
+?geom_count
+# so this graphic is pretty useless - nearly every contribution falls within the first bin, there are very few that are above 1000.
+# so i can adjust the binnning:
+df$money_bin <- cut(df$contb_receipt_amt, breaks = c(0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 11000))
+head(df)
+ggplot(df, aes(money_bin)) + geom_bar() +
+  geom_bar(aes(money_bin, aggregate(contb_receipt_amt ~ money_bin, data = df, sum)), stat='identity')
+
+?geom_count
+
+help(scale, package=ggplot2)
+
+table(df$money_bin)
+
+# Display proportions of female/male candidates in the respective parties
+d <- ggplot(df, aes(x = cand_gender, y = cand_party))
+d + geom_count(aes(size = ..prop.., group = cand_party)) +
+  scale_size_area(max_size = 10)
+
+# let's see a graph plotting the statistical percentage of money per candidate per gender
+gender_money$gen_mon_perc <- ifelse(gender_money$cand_gender == 'F', gender_money$contb_receipt_amt / 3, gender_money$contb_receipt_amt / 19)
+gender_money
+ggplot(gender_money, aes(cand_gender, contb_receipt_amt)) +
+  scale_x_discrete() +
+  geom_bar(stat='identity', alpha=0.5) +
+  geom_bar(aes(cand_gender, gen_mon_perc), stat='identity', fill=c('pink', 'lightblue'), alpha=0.5)
+
+# but of course that's quite misleading!... HC got so much, that we should make this clearer
+gender_cand_money <- aggregate(contb_receipt_amt ~ cand_gender + cand_nm, data = df, sum)
+gender_cand_money
+ggplot(gender_cand_money) + scale_x_discrete() +
+  geom_bar(aes(cand_gender, contb_receipt_amt, fill=cand_nm), stat='identity', alpha=0.8)
+# whoa! as we can see, Hillary Clinton received by far the largest amount of money through contributions. she nearly single-handedly takes half of all the contributions made
+
+
+########################## TAKE THIS ONE ##########################
+# i can also see, that clinton and sanders make the two biggest single sections, and they are both with the democrats. therefore it would be interesting to plot money per party instead of gender
+party_cand_money <- aggregate(contb_receipt_amt ~ cand_party + cand_nm, data = df, sum)
+ggplot(party_cand_money) + scale_x_discrete() +
+  geom_bar(aes(cand_party, contb_receipt_amt, fill=cand_nm), stat='identity', alpha=0.8)
+
+# so we can see that the democrats received way more money through contributitons than the republicans, and Hillary Clinton alone received more money than all the republican candidates combined.
+# whereas the contributions to the green party are so tiny, that they become invisible in this visualization
+
+# i could clean this up a bit, and keep only the more-earners:
+high_contb_cands <- subset(df, aggregate(contb_receipt_amt ~ cand_nm, data=df, sum) > 100000)
+## TODO: not working...
+?subset
+
+
+
+###
+
+summary(gender_money)
+table(gender_money)
+
+```
+
+
+Checking out how many contributions did the candidates get in comparison to each other.
+
+# Univariate Plots Section
+```{r echo=FALSE, Univariate_Plots}
+
+# number of contributions per candidate
+qplot(cand_nm, data = subset(df, table(df$cand_nm) > 500))
+
+ggplot(data = df, aes(x = cand_nm, y = sum(contb_receipt_amt))
+
+sum(df$contb_receipt_amt)
+aggregate(df, list(df$contb_receipt_amt, df$cand_nm), summary)
+?subset
+?aggregate
+# getting data for amount of money donated per candidate
+by(df$contb_receipt_amt, df$cand_nm, sum)
+by(df$contb_receipt_amt, df$cand_nm, summary)
+# how many contributions per candidate
+table(df$cand_nm)
+?facet_wrap()
+?mpg
+names(df)
+ggplot(df, aes(cand_nm, hwy)) +
+  geom_point() +
+  facet_wrap(~cand_nm)
+head(df$cmte_id)
+head(df$election_tp)
+# contbr_st -> CA (are there others?), plot
+# contbr_employer -> maybe to see what company
+# contbr_zip -> where from most money (for whom)
+# contbr_occupation -> $ from which jobs
+
+# contb_receipt_amt !!!!
+# contb_receipt_dt -> when through time (for whom)?
+# contbr_nm (who did the highest, who the most, also refunds vs. donations),
+
+# discard: cmte_id, memo_cd, tran_id, cand_id, form_tp, file_num, tran_id, X
+# receipt_desc -> "REATTRIBUTED FROM ERIC UHRANE ... US CITIZEN REDESIGNATION TO GENERAL" ???
+# memo_text -> weird... what is it "earmarked"  to. but often "see below", so difficult
+# election_tp -> wondering whether this is P for primary (or presidential?) and G for general elections, and year?
+
+# removing the columns I won't deal with
+df <- subset(df, select=-c(cmte_id, contbr_st, receipt_desc, memo_cd, memo_text, form_tp, file_num, X))
+head(df)
+# find how many contributions per candidate
+sum(df$cand_nm == 'Sanders, Bernard')
+```
+
+
+
+```{r echo=FALSE}
+# trying around some aggregate()
+# sum all receipt amounts, aggregating rows based on candidate name
+money_by_cand <- aggregate(contb_receipt_amt ~ cand_nm, data = df, sum)
+# nice this works, so now we can make a graph
+# maybe coloring the dots according to party could be interesting!
+ggplot(aes(x = contb_receipt_amt, y = cand_nm), data = df) + geom_point() +
+  scale_x_continuous()
+# this gives me negative values for amounts, which is very confusing.
+neg_contb_amt <- subset(df, contb_receipt_amt < 0)
+head(neg_contb_amt)
+# sum all receipt amounts, aggregating rows based on candidate name
+only_refunds <- subset(df, contb_receipt_amt < 0)
+refunds_by_contb <- aggregate(contb_receipt_amt ~ contbr_nm, data = only_refunds, sum)
+head(refunds_by_contb)
+nrow(refunds_by_contb)
+# seems there are nearly 1500 "contributors" who actually got more money refunded than what they gave.
+nrow(only_refunds)
+# and some gave some, but also got some back (or got some back multiple times?)
+head(only_refunds)
+
+# try a plot for these refunds (which was too big, so I'll take a look at the most $$)
+ggplot(subset(refunds_by_contb, contb_receipt_amt < -10000), aes(contb_receipt_amt, contbr_nm)) + geom_point()
+# this is a lot of money to get back. I wonder why and how. But I must admit I don't really understand these US politics and fundings of the candidates
+# So let's see who *gave* the most
+only_contribs <- subset(df, contb_receipt_amt > 0)
+ggplot(subset(only_contribs, contb_receipt_amt > 10000), aes(contb_receipt_amt, contbr_nm)) + geom_point()
+top_givers <- subset(only_contribs, contb_receipt_amt > 10000)
+nrow(top_givers)
+# so there are 24 people that all gave the same amount, so I suspect (and kinda know) that there is an upper limit around 10.000$ (maybe without taxes, or such)
+# TODO: check the top-giving limit in CA
+# I also spotted potentially erroneous data, with the contributor DE GROOTE, DOUG MR. being listed, as well as a DE GROOTE, DOUG, both with the same amount, which makes me believe that it is a mistake in the data (or a rather badly executed way of increasing one's contribution limit...)
+# maybe can check :)
+top_givers
+duplicated(top_givers$tran_id)
+# Yep, seems that some of those transactions are listed more often in the dataset.
+# actually quite a lot of them! 7 TRUE!
+dup_givers <- subset(top_givers, if (duplicated(top_givers$tran_id) == TRUE))
+dup_givers
+?aggregate()
+```
+
+### Second Question: Which city contributed the most, and to whom (and in relation to the inhabitants, maybe)
+
+```{r}
+names(df)
+ggplot(df, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
+  geom_bin2d()
+
+# this one is actually quite interesting:
+ggplot(df, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
+  geom_count()
+# shows how people give distinct (full numbers) amounts of money often (with the clear lines down)
+
+
+########################## TAKE THIS ONE ##########################
+# jitter does a similar thing as geom_point (or geom_count), here i'll apply it only to the actual contributions, leaving out the refunds
+# and set an alpha to see better the density of the distribution
+ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
+  geom_jitter(alpha=0.1)
+# this is a nice graph :)
+# it nicely tells something about how much do most people donate (first big bar right of 0), about which cities had the most contributions (horizontal black lines), and where are there common discrete jumps, maybe related to regulations, such as donation limits (vertical lines)
+
+# TODO: clean it up, remove cities (keep only the ones that gave the most money in total), research regarding contribution limits; maybe color dots regarding which party was donated to
+
+?geom
+```
+
+### Question 3: How much and to whom did NOT EMPLOYED give
+
+I am very perplexed and involved with the topic of homeless people in the US, so anything that goes into that direction rings a bell with me.
+Here I'm trying to investigate a little bit into the political direction that homeless might be having a tendency for.
+However, I understand that this is highly hypothetical, because I only have data of **monetary contributions**, that **"NOT EMPLOYED"** people gave for the presidential campaigns.
+Of course giving money != political orientation (It might be a good proxy, however what I'm trying to say is, that it's not an exhaustive factor. Many people might have a political orientation, however did not contribute to the campaigns monetarily. This might be especially true for homeless people, who are very likely to have very little money at their hands).
+Further, NOT EMPLOYED != homeless. There are quite a few people that are employed, but homeless in the US. Assuming that they would give a contribution, they would fall into a different category.
+
+These graphs are not gonna show much about how much money was flowing, but rather is intended as a proxy on where does a certain section of society lean towards politically.
+
+
+```{r}
+names(df)
+df$contb_emp_status <- ifelse(df$contbr_occupation == 'NOT EMPLOYED', 'not employed', 'employed')
+head(df)
+
+empl_money <- aggregate(contb_receipt_amt ~ contb_emp_status, data=df, sum)
+
+ggplot(empl_money, aes(contb_emp_status, contb_receipt_amt)) + scale_x_discrete() +
+  geom_bar(fill=c('gray', 'lightblue'), stat = 'identity')
+# okay, not so exciting :)
+# wait
+table(df$contb_emp_status)
+
+# Display proportions of female/male candidates in the respective parties
+d <- ggplot(df, aes(x = contb_emp_status, y = cand_party))
+d + geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
+  scale_size_area(max_size = 80)
+# interesting: seems that a much higher percentage of people without employment contribute to the democrats
+# i boosted the max_size variable, which makes it even more clear how vanishingly small is the percentage of NOT EMPLOYED people that contributed to the Republican party.
+
+# and well, let's see for whom...
+d <- ggplot(df, aes(x = contb_emp_status, y = cand_nm))
+d + geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
+  scale_size_area(max_size = 10)
+# bam! Sanders, Bernard gets percentage-wise the most contributions from the NOT EMPLOYED!
+# and it seems that apart from Trump, Donald J. there is no Republican left in the ballots who got contributions by NOT EMPLOYED people.
+# when increasing the max_size also here it becomes even more clear how great the difference between Sanders, Bernard and the other candidates is in this aspect.
+
+# let's look at this in another way:
+ggplot(subset(df, contb_emp_status == 'not employed'), aes(contb_emp_status, fill=cand_nm)) + scale_x_discrete() +
+  geom_bar()
+# time to make a pie chart :)
+?geom
+
+# wondering which party do IT people lean towards. :)
+# TODO: how to get unique values printed from all rows of a data.frame
+
+
+```
+
+# TRYOUTS SECTION
+
+```{r}
+# checking out some loops and decision constructs in R
+for (i in duplicated(republicans))
+{
+  if (i == TRUE)
+    {
+      print('duplicate problem')
+  }
+  else  print('no probs')
+}
+
+
+# reshaping data
+names(airquality) <- tolower(names(airquality))
+head(airquality)
+melt(airquality, id.vars=c('month', 'day'))
+head(airquality)
+
+
+### finally trying some graphs!
+?mpg
+
+ggplot(mpg, aes(cty, hwy)) +
+ geom_point()
+
+ggplot(mpg, aes(cty, hwy)) +
+ geom_count()
+
+# Best used in conjunction with scale_size_area which ensures that
+# counts of zero would be given size 0. Doesn't make much different
+# here because the smallest count is already close to 0.
+ggplot(mpg, aes(cty, hwy)) +
+ geom_count()
+ scale_size_area()
+
+# Display proportions instead of counts -------------------------------------
+# By default, all categorical variables in the plot form the groups.
+# Specifying geom_count without a group identifier leads to a plot which is
+# not useful:
+d <- ggplot(diamonds, aes(x = cut, y = clarity))
+d + geom_count(aes(size = ..prop..))
+# To correct this problem and achieve a more desirable plot, we need
+# to specify which group the proportion is to be calculated over.
+d + geom_count(aes(size = ..prop.., group = 1)) +
+  scale_size_area(max_size = 10)
+
+# Or group by x/y variables to have rows/columns sum to 1.
+d + geom_count(aes(size = ..prop.., group = cut)) +
+  scale_size_area(max_size = 10)
+d + geom_count(aes(size = ..prop.., group = clarity)) +
+  scale_size_area(max_size = 10)
+
+
+
+```
+
+
+# Univariate Analysis
+
+### Structure of the dataset
+
+The dataset consists mainly of categorical variables, such as `cand_nm`, `contbr_occupation` or `contbr_zip`. All these are interesting to put in context with the one continuous variable `cont_receipt_amt`, and of course the **amount of rows**.
+
+A more thorough overview of the data can be taken from the official site:
+[ftp://ftp.fec.gov/FEC/Presidential_Map/2016/DATA_DICTIONARIES/CONTRIBUTOR_FORMAT.txt](ftp://ftp.fec.gov/FEC/Presidential_Map/2016/DATA_DICTIONARIES/CONTRIBUTOR_FORMAT.txt)
+
+### Main feature(s) of interest in the dataset
+
+How is the number of individual contributions and the amount of money gained through them spread out among the different candidates.
+In further abstraction it is interesting to look at the same with aggregating or subsetting the dataset (e.g. by gender of the candidate, or by origin city of the contributor).
+
+### Other features in the dataset that will help support the investigation into the feature(s) of interest?
+
+### New variables created (indirectly) from existing variables
+
+I created two new columns containing alltogether 5 new variables:
+
+- **cand_gender**, defining the gender of the presidential candidate (`'F'` for "female" and `'M'` for "male")
+- **cand_party**, defining the party affiliation of the candidate (`'D'` for "Democrats", `'R'` for "Republicans", and `'G'` for "Greens")
+
+### **Investigated features**: unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+
+
+# Bivariate Plots Section
+```{r echo=FALSE, Bivariate_Plots}
+
+```
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+### What was the strongest relationship you found?
+
+
+
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, Multivariate_Plots}
+
+```
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+
+### Were there any interesting or surprising interactions between features?
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+
+```
+
+### Description One
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+```
+
+### Description Two
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+
+```
+
+### Description Three
+
+------
+
+# Reflection
+
+# References:
+
+**R:**
+
+- http://stackoverflow.com/questions/8854046/duplicate-row-names-are-not-allowed-error-in-r-programming
+- http://stackoverflow.com/questions/4605206/drop-data-frame-columns-by-name
+- http://stackoverflow.com/questions/28195996/count-number-of-rows-matching-a-criteria
+- http://stackoverflow.com/questions/2626567/collapsing-data-frame-by-selecting-one-row-per-group
+- http://stackoverflow.com/questions/4605206/drop-columns-in-r-data-frame
+- https://www.miskatonic.org/2012/09/24/counting-and-aggregating-r/
+- http://www.r-bloggers.com/r-function-of-the-day-cut/
+
+**ggplot:**
+
+- http://stackoverflow.com/questions/34963138/error-stat-count-in-ggplot2
+
+**US politics:**
+
+- https://en.wikipedia.org/wiki/Republican_Party_presidential_primaries,_2016
+- https://en.wikipedia.org/wiki/Democratic_Party_presidential_primaries,_2016
+- https://en.wikipedia.org/wiki/Jill_Stein
