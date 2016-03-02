@@ -367,10 +367,9 @@ ggplot(df, aes(sum(contb_receipt_amt))) +
 
 ```
 
-### Second Question: Which city contributed the most, and to whom (and in relation to the inhabitants, maybe)
+### QUESTION 2: _Which city contributed the most, and to whom (and in relation to the inhabitants, maybe)_
 
 ```{r}
-names(df)
 ggplot(df, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
   geom_bin2d()
 
@@ -390,7 +389,63 @@ ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() 
 
 # TODO: clean it up, remove cities (keep only the ones that gave the most money in total), research regarding contribution limits; maybe color dots regarding which party was donated to
 
+all_cities <- aggregate(contb_receipt_amt ~ contbr_city, data=only_contribs, sum)
+rich_cities <- subset(all_cities, contb_receipt_amt > 150000)
+nrow(rich_cities)
+head(rich_cities)
+
+ggplot(rich_cities, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
+  geom_point()
+# maybe this is not so interesting, and i should rather right away put it in relation with the number of inhabitants. but that's a lot of work to gather all this data...
+
+
+### Getting Population estimates for CA
+
+# found some here: https://www.census.gov/popest/data/cities/totals/2012/SUB-EST2012.html
+# the data is for 2012, but it's the most current one listing *cities* that I found there.
+# It's not perfect, but I just want to take a look :)
+
+pop_df <- read.csv('population_CA_2012.csv')
+names(pop_df)
+head(pop_df)
+# i'm only gonna deal with NAME and the latest estimate
+pop_df <- pop_df[, c('NAME', 'POPESTIMATE2012')]
+pop_df
+# yay to stackoverflow! and the internet in general! :)
+# removing the last word ('city') from the city names
+pop_df$NAME <- sub(pop_df$NAME, pattern = " [[:alpha:]]*$", replacement = "")
+# converting the strings in the column to uppercase to match how they are stored in my df
+pop_df$NAME <- toupper(pop_df$NAME)
+# merge the two data.frames by the city-name columns
+only_contribs <- merge(only_contribs, pop_df, by.x = 'contbr_city', by.y = 'NAME')
+#head(only_contribs)
+head(only_contribs)
+
+ggplot(only_contribs, aes(POPESTIMATE2012, contb_receipt_amt)) + geom_bin2d()
+# would be interesting to display this with a facet_wrap. however, i believe there are too many cities. so i should get the ratios first? boh, bring it.
+
+
+### this would totally be a multivariate analysis... just gotta manage it!
 ?geom
+?facet_wrap
+# this would be cool maybe, but it's simply too many cities...
+ggplot(only_contribs, aes(POPESTIMATE2012, contb_receipt_amt)) + 
+  geom_count() +
+  facet_wrap(~ contbr_city)
+#  geom_count(aes(size = ..prop.., group = cand_party)) +
+#  scale_size_area(max_size = 10)
+
+# getting the ratios
+total_contribs <- aggregate(data=only_contribs, contb_receipt_amt ~ contbr_city, sum)
+total_contribs <- merge(total_contribs, pop_df, by.x = 'contbr_city', by.y = 'NAME')
+head(total_contribs)
+total_contribs <- total_contribs[!duplicated(total_contribs), ]
+head(total_contribs)
+# oops, there is also data for "counties" in here, that have now the same name as some of the cities... should remove the rows with the higher data.
+
+
+ggplot(only_contribs, aes(POPESTIMATE2012, contbr_city)) + geom_density()
+
 ```
 
 ### Question 3: How much and to whom did NOT EMPLOYED give
@@ -405,25 +460,30 @@ These graphs are not gonna show much about how much money was flowing, but rathe
 
 
 ```{r}
-names(df)
+# adding a column containing a pseudo-boolean gleaned from the employment data
 df$contb_emp_status <- ifelse(df$contbr_occupation == 'NOT EMPLOYED', 'not employed', 'employed')
-head(df)
-
+#head(df)
+# aggregating the amounts of money for each of the two groups
 empl_money <- aggregate(contb_receipt_amt ~ contb_emp_status, data=df, sum)
 
+# who gave how much?
 ggplot(empl_money, aes(contb_emp_status, contb_receipt_amt)) + scale_x_discrete() +
   geom_bar(fill=c('gray', 'lightblue'), stat = 'identity')
 # okay, not so exciting :)
 # wait
 table(df$contb_emp_status)
+# there are very few NOT EMPLOYED compared to those with employment, so I'd need ratios
 
-# Display proportions of female/male candidates in the respective parties
+# Display proportions of which party did people with/without employment give contributions to
 d <- ggplot(df, aes(x = contb_emp_status, y = cand_party))
 d + geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
   scale_size_area(max_size = 80)
 # interesting: seems that a much higher percentage of people without employment contribute to the democrats
-# i boosted the max_size variable, which makes it even more clear how vanishingly small is the percentage of NOT EMPLOYED people that contributed to the Republican party.
+# NOTE: I boosted the max_size variable, which makes it even more clear how vanishingly small is the percentage of NOT EMPLOYED people that contributed to the Republican party.
 
+
+
+########################## TAKE THIS ONE ##########################
 # and well, let's see for whom...
 d <- ggplot(df, aes(x = contb_emp_status, y = cand_nm))
 d + geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
@@ -431,79 +491,26 @@ d + geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
 # bam! Sanders, Bernard gets percentage-wise the most contributions from the NOT EMPLOYED!
 # and it seems that apart from Trump, Donald J. there is no Republican left in the ballots who got contributions by NOT EMPLOYED people.
 # when increasing the max_size also here it becomes even more clear how great the difference between Sanders, Bernard and the other candidates is in this aspect.
+# NOT EMPLOYED probably also includes college students! Which makes sense because Sanders wants to take away college debt, so he has a big bunch of the students on his side (I heard of 83% somewhere)
 
 # let's look at this in another way:
 ggplot(subset(df, contb_emp_status == 'not employed'), aes(contb_emp_status, fill=cand_nm)) + scale_x_discrete() +
   geom_bar()
 # time to make a pie chart :)
-?geom
+
 
 # wondering which party do IT people lean towards. :)
-# TODO: how to get unique values printed from all rows of a data.frame
-
-
-```
-
-# TRYOUTS SECTION
-
-```{r}
-# checking out some loops and decision constructs in R
-for (i in duplicated(republicans))
-{
-  if (i == TRUE)
-    {
-      print('duplicate problem')
-  }
-  else  print('no probs')
-}
-
-
-# reshaping data
-names(airquality) <- tolower(names(airquality))
-head(airquality)
-melt(airquality, id.vars=c('month', 'day'))
-head(airquality)
-
-
-### finally trying some graphs!
-?mpg
-
-ggplot(mpg, aes(cty, hwy)) +
- geom_point()
-
-ggplot(mpg, aes(cty, hwy)) +
- geom_count()
-
-# Best used in conjunction with scale_size_area which ensures that
-# counts of zero would be given size 0. Doesn't make much different
-# here because the smallest count is already close to 0.
-ggplot(mpg, aes(cty, hwy)) +
- geom_count()
- scale_size_area()
-
-# Display proportions instead of counts -------------------------------------
-# By default, all categorical variables in the plot form the groups.
-# Specifying geom_count without a group identifier leads to a plot which is
-# not useful:
-d <- ggplot(diamonds, aes(x = cut, y = clarity))
-d + geom_count(aes(size = ..prop..))
-# To correct this problem and achieve a more desirable plot, we need
-# to specify which group the proportion is to be calculated over.
-d + geom_count(aes(size = ..prop.., group = 1)) +
-  scale_size_area(max_size = 10)
-
-# Or group by x/y variables to have rows/columns sum to 1.
-d + geom_count(aes(size = ..prop.., group = cut)) +
-  scale_size_area(max_size = 10)
-d + geom_count(aes(size = ..prop.., group = clarity)) +
-  scale_size_area(max_size = 10)
-
-
+# collecting all the unique jobs present in the data.frame
+jobs <- unique(df$contbr_occupation)
+jobs
+# haha, found one 'GRANDPA !!' :)
+# well, these are too many, and people just put what they wanted. it's not been scanned through and grouped it seems.
+# I don't want to get into this.
+names(df)
 
 ```
 
-
-# Univariate Analysis
+# Discussion of the Analysis
 
 ### Structure of the dataset
 
@@ -517,48 +524,38 @@ A more thorough overview of the data can be taken from the official site:
 How is the number of individual contributions and the amount of money gained through them spread out among the different candidates.
 In further abstraction it is interesting to look at the same with aggregating or subsetting the dataset (e.g. by gender of the candidate, or by origin city of the contributor).
 
-### Other features in the dataset that will help support the investigation into the feature(s) of interest?
+### Other features that help to support the investigation into the features of interest
+
+I found it interesting to add the population count of the cities in CA, to be able to calculate a ratio regarding how many contributions and how much money in total, respectively, was given by city in relations to the number of inhabitants.
 
 ### New variables created (indirectly) from existing variables
 
-I created two new columns containing alltogether 5 new variables:
+I created three new columns containing some new variables:
 
 - **cand_gender**, defining the gender of the presidential candidate (`'F'` for "female" and `'M'` for "male")
 - **cand_party**, defining the party affiliation of the candidate (`'D'` for "Democrats", `'R'` for "Republicans", and `'G'` for "Greens")
+- **POPESTIMATE2012**, containing the population estimates of the CA cities for 2012, taken from a different governmental source online
+- **contb_emp_status**, where I reduced the `contbr_occupation` to show only whether a contributor was employed or not
 
 ### **Investigated features**: unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
 
+---
 
+### Relationships observed in the bivariate part of the investigation. Variations of the investigated features in relation with other features of the dataset.
 
-# Bivariate Plots Section
-```{r echo=FALSE, Bivariate_Plots}
+### Interesting relationships between other features (not the main feature(s) of interest)
 
-```
+### Strongest relationship discovered
 
-# Bivariate Analysis
+In my opinion the strongest relationship that I kept discovering over different plots, was the amount of contributions received, that was very clearly "won" by Sanders, Bernard.
 
-### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+---
 
-### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+### Relationships observed in the multivariate part of the investigation. Features that strengthened each other in terms of looking at your feature(s) of interest
 
-### What was the strongest relationship you found?
+### Interesting or surprising interactions between features
 
-
-
-
-# Multivariate Plots Section
-
-```{r echo=FALSE, Multivariate_Plots}
-
-```
-
-# Multivariate Analysis
-
-### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
-
-### Were there any interesting or surprising interactions between features?
-
-### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+### OPTIONAL: Models created with the dataset. Strengths and limitations of the model.
 
 ------
 
@@ -602,6 +599,10 @@ I created two new columns containing alltogether 5 new variables:
 - http://stackoverflow.com/questions/4605206/drop-columns-in-r-data-frame
 - https://www.miskatonic.org/2012/09/24/counting-and-aggregating-r/
 - http://www.r-bloggers.com/r-function-of-the-day-cut/
+- http://stackoverflow.com/questions/13093931/r-remove-last-word-from-string
+- https://stat.ethz.ch/R-manual/R-devel/library/base/html/merge.html
+- http://stackoverflow.com/questions/16516593/convert-from-lowercase-to-uppercase-all-values-in-all-character-variables-in-dat
+- http://stackoverflow.com/questions/13967063/remove-duplicate-rows-in-r
 
 **ggplot:**
 
