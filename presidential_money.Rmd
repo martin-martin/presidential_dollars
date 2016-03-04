@@ -1,21 +1,21 @@
 ---
-title: "presidential_money"
+title: "Dollars for Votes - the US presidential elections"
 author: "martin-martin"
 date: "29 Februar 2016"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    depth: 4
 ---
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
 # loading the packages I use
 library(ggplot2)
 library(reshape2)
+library(plyr)
 ```
 
-# Dollars for Votes - the US presidential elections
-
-by martin-martin
-
-=====================================================================================
+# Introduction
 
 I'm currently spending my time in the USA, and it's (pre-)election time! Having a memebership to a 24h gym gets me exposed to a massive amount of politics on TV while I'm doing my time on the crosstrainer or even when I'm just changing in the dressing room.
 It's February, the elections are in November, but there is a near-constant broadcast of candidates battling each other on CNN.
@@ -28,7 +28,7 @@ Now, my analysis will not deal with this comparison, since the ballots have not 
 
 ---
 
-## Pt. 0: The Data
+# Pt. 0: The Data
 
 The data for the 2016 Presidential Campaign Contributions can be found here: http://fec.gov/disclosurep/PDownload.do
 Since I am currently in California, I chose and downloaded the dataset for `CA.zip`.
@@ -74,7 +74,7 @@ However, there is also another "hidden" numerical value associated with the data
 
 ---
 
-### Ideas and Interests that I will explore
+## Ideas and Interests that I will explore
 
 + Who got the most contributions? Which person, which party, which gender?
 
@@ -84,7 +84,7 @@ However, there is also another "hidden" numerical value associated with the data
 
 ---
 
-## Pt. 1: Mini-Wrangling
+# Pt. 1: Mini-Wrangling
 
 In order to be able to load the data, I had to add a comma at the end of the header row in my .csv file.
 
@@ -97,7 +97,7 @@ df <- read.csv('P00000001-CA.csv')
 
 ---
 
-### Adding new columns: cand_gender and cand_party
+## Adding new columns: cand_gender and cand_party
 
 For some of my questions, I am interested to take a look at the data also depending on the gender and the party affiliation of the different candidates. Since these columns are not present in the dataset, I went to gather the required information online and added it as two new columns to my data.frame `df`.
 
@@ -149,7 +149,7 @@ df$cand_gender <- ifelse(df$cand_nm %in% female, "F", "M")
 
 ---
 
-### Removing obsolete columns
+## Removing obsolete columns
 
 There is quite a big amount of data that I am not intending to use for my exploration. These include e.g. `conbr_st`, which is in my case always `CA`, or `file_num`, a unique number used to link the transactions to the reports (which I'll also drop).
 
@@ -161,7 +161,7 @@ df <- df[ , !(names(df) %in% discard)]
 
 ---
 
-## Pt. 2: Exploration
+# Pt. 2: Exploration
 
 After having cleaned and adapted the dataset to my wishes, I can start into my exploration.
 
@@ -174,14 +174,14 @@ sum(df$cand_id == 'P00003392')
 
 ---
 
-### QUESTION 1: _Who got the most money through contributions?_
+## QUESTION 1: _Who got the most money through contributions?_
 
 In this section I'll take a look at money and amounts. I'm wondering which candidate got **the most contributions**, and is it the same person who got **the most money** through contributions? How is the size of the contributions distributed in regards to the candidates?
 Which gender received more contributions, or more money? Which political party?
 
 ---
 
-#### PART 1: the mean and distributions
+### PART 1: the mean and distributions
 
 ```{r echo=FALSE, Exploring_Most_Money_1_1}
 # calculating the mean of the contributions for each candidate
@@ -216,15 +216,16 @@ ggplot(mean_contrib_per_cand, aes(reorder(cand_nm, -contb_receipt_amt), contb_re
   geom_density() + 
   coord_flip()
 # label is also a cool way to do it, but better this!
+# IDEA: plot mean amount of contribution vs. number of contributions
 ```
 
 ---
 
-#### PART 2: amounts
+### PART 2: amounts
 
 Most of the contributions are below 1000 $!
 
-```{r echo=FALSE, Exploring_Most_Money_2_1}
+```{r echo=FALSE, message=FALSE, Exploring_Most_Money_2_1}
 ggplot(df, aes(contb_receipt_amt)) +
   geom_freqpoly()
 
@@ -240,7 +241,7 @@ ggplot(aes(x = contb_receipt_amt, y = cand_nm, alpha=0.1, color=cand_nm), data =
 
 ---
 
-##### PART 2.1: refunds
+#### PART 2.1: refunds
 
 The previous graph gives me negative values for amounts, which is at first very confusing. So I construct a vector holding only the **refunds**.
 
@@ -276,7 +277,7 @@ Here's some info: https://ballotpedia.org/California_Proposition_34,_Limits_on_C
 
 ---
 
-##### PART 2.2: contributions
+#### PART 2.2: contributions
 
 Well, so let's see who *gave* the most:
 
@@ -319,7 +320,7 @@ Well. But I'm not gonna go hunt down these individuals :)
 ---
 
 
-#### PART 3: gender and money
+### PART 3: gender and money
 
 Number of contributions per gender of candidate
 
@@ -344,7 +345,7 @@ Whoa! seems that females received nearly as much money in contributions as males
 
 ---
 
-##### PART 3.1: binning
+#### PART 3.1: binning
 
 It could be interesting to take a look at the mean contribution per F/M candidate.
 
@@ -410,7 +411,7 @@ Interesting, because I already saw that most low contributions went to one candi
 
 ---
 
-##### PART 3.2: proportions
+#### PART 3.2: proportions
 
 I'll go forward displaying proportions of female/male candidates in the respective parties
 
@@ -452,7 +453,7 @@ As we can see, _Hillary Clinton_ received by far the largest amount of money thr
 
 ---
 
-#### PART 4: party money
+### PART 4: party money
 
 I can also see, that Clinton and Sanders make the two biggest single sections, and they are both with the Democrats. Therefore it would be interesting to plot money per party instead of by gender.
 
@@ -470,11 +471,11 @@ Whereas the contributions to the green party are so tiny, that they become invis
 
 ---
 
-#### PART 5: candidate money
+### PART 5: candidate money
 
 Number of contributions per candidate:
 
-```{r echo=FALSE, Exploring_Most_Money_5_1}
+```{r echo=FALSE, message=FALSE, Exploring_Most_Money_5_1}
 
 qplot(cand_nm, data = subset(df, table(df$cand_nm) > 500))
 
@@ -490,7 +491,7 @@ While most are vanishingly small in comparison, four candidates stick out in ter
 
 Let's look at the money amassed through the contributions:
 
-```{r echo=FALSE, Exploring_Most_Money_5_3}
+```{r echo=FALSE, message=FALSE, Exploring_Most_Money_5_3}
 
 ggplot(df, aes(sum(contb_receipt_amt))) +
   geom_histogram() +
@@ -502,7 +503,7 @@ These plots are not very interesting and don't tell me too much new, so enough o
 
 ---
 
-### QUESTION 2: _Which city contributed the most, and to whom?_
+## QUESTION 2: _Which city contributed the most, and to whom?_
 
 ```{r echo=FALSE, Exploring_Cities_1}
 ggplot(df, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
@@ -529,7 +530,9 @@ This is a nice graph :)
 # jitter does a similar thing as geom_point (or geom_count)
 # setting an `alpha` to better see the density of the distribution
 ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
-  geom_jitter(alpha=0.1)
+  geom_jitter(alpha=0.1) +
+  # removing the ticks and text of the y axis, because there are too many to show
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
 
 # TODO: clean it up, remove cities (keep only the ones that gave the most money in total), research regarding contribution limits; maybe color dots regarding which party was donated to
 
@@ -553,7 +556,7 @@ Hm... this is not so interesting, so maybe I should rather right away put it in 
 
 ---
 
-#### Getting Population estimates for CA
+### Getting Population estimates for CA
 
 I found some here: https://www.census.gov/popest/data/cities/totals/2012/SUB-EST2012.html
 The data is for 2012, but it's the most current one that is listing *cities* that I could find there.
@@ -598,39 +601,93 @@ Could be interesting to display this with a `facet_wrap()`. However, there are t
 
 ---
 
-#### Calculating the Ratios
+### Calculating the Ratios
 
 ```{r echo=FALSE, Exploring_Cities_7}
 
+# calculating total amount of contributions per city
 total_contribs <- aggregate(data=only_contribs, contb_receipt_amt ~ contbr_city, sum)
+# merging with population estimate for cities
 total_contribs <- merge(total_contribs, pop_df, by.x = 'contbr_city', by.y = 'NAME')
-#head(total_contribs)
+# removing duplicates
 total_contribs <- total_contribs[!duplicated(total_contribs), ]
-#head(total_contribs)
+# calculating number of contributions per city
+freq_contbs_city <- count(only_contribs, 'contbr_city')
+# adding to total_contribs dataframe
+total_contribs <- merge(total_contribs, freq_contbs_city, 'contbr_city')
+# renaming the frequency column for clarity
+total_contribs <- rename(total_contribs, c('freq' = 'number_of_contb'))
+head(total_contribs)
 
 ```
 
 Oops, there is also data for "counties" in here, that have now the same name as some of the cities... so I'll have to remove the rows with the higher values for capita.
 
-```{r echo=FALSE, Exploring_Cities_8}
+```{r echo=FALSE, warning=FALSE, Exploring_Cities_8}
+# I set the 'warning=FALSE' option here because it otherwise knits a long streak of
+# "## Warning in FUN(X[[i]], ...): no non-missing arguments to min; returning Inf"
+# (I think) this Warning comes because not all i have duplicates
 
-# taking out one batch of the duplicate 'city' rows
-set_1 <- subset(total_contribs, duplicated(total_contribs$contbr_city))
-#set_1
-# getting both instances
-set_both <- subset(total_contribs, total_contribs$contbr_city %in% set_1$contbr_city)
-#set_both
-# creating the complementary set to 'set_1'
-set_2 <- subset(set_both, !set_both$POPESTIMATE2012 %in% set_1$POPESTIMATE2012)
-#set_2
-### TODO: make this work :)
-lower_df <- subset(set_both, set_1$contbr_city == set_2$contbr_city & set_1$POPESTIMATE2012 < set_1$POPESTIMATE2012)
+# removing the counties (the row entries with the higher population estimates)
+# Resource: http://stackoverflow.com/questions/25962909/remove-duplicates-based-on-2nd-column-condition
+total_contribs <- total_contribs[with(total_contribs, ave(POPESTIMATE2012, contbr_city, FUN=min) == POPESTIMATE2012), ]
+head(total_contribs)
+
+# IDEA: plot the relations in a meaningful graph (or graphs!)
 
 ```
 
+That's better :)
+
+Here comes a bit more playing around while extracting the cities with the most contributions, and trying to use `melt()`.
+
+```{r echo=FALSE, warning=FALSE, Exploring_Cities_9}
+
+# vector with count of occurences
+city_contb_count <- table(df$contbr_city)
+#head(city_contb_count)
+
+# trying a graph after using melt()
+m <- melt(city_contb_count)
+#head(m)
+# this is not such a bad plot maybe...
+ggplot(m, aes(Var1, value)) + scale_x_discrete() +
+  geom_point() +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank()) +
+  labs(x = 'cities', y = '# of contributions')
+
+```
+
+I'm looking to narrow down to find the cities with the most contributions. Trying different values, I found that using `30000` limits the amount of cities to
+
+```{r echo=FALSE, warning=FALSE, Exploring_Cities_10}
+
+length(names(city_contb_count[city_contb_count > 3000]))
+five_cities <- names(city_contb_count[city_contb_count > 3000])
+five_cities
+
+```
+
+which is something I can work with! :)
+
+Here's an interesting little fact:
+more than half the number of contributions come from only 5 cities! Percentage:
+
+```{r echo=FALSE, warning=FALSE, Exploring_Cities_11}
+
+# creating a df that contains only contributions made in the 5 cities with more than 30 000 contributions
+most_contribs <- subset(only_contribs, only_contribs$contbr_city %in% five_cities)
+
+# calculating the percentage of contributions made in the 5 most-contribution-cities
+nrow(most_contribs) / nrow(df) * 100
+
+```
+
+I'm more of a contry-boy myself and have enough of these cities, so I'll now move forward to investigate another question. :)
+
 ---
 
-### Question 3: _How much and to whom did `NOT EMPLOYED` give_
+## Question 3: _How much and to whom did `NOT EMPLOYED` give_
 
 I am very perplexed and involved with the topic of homeless people in the US, so anything that goes into that direction rings a bell with me.
 Here I'm trying to investigate a little bit into the political direction that homeless might be having a tendency for.
@@ -672,7 +729,7 @@ table(df$contb_emp_status)
 There are very few `NOT EMPLOYED` compared to those with employment, so I'll need ratios
 
 Displaying proportions of which party did people with/without employment give contributions to:
-```{r echo=FALSE, Exploring_Unemployment_4}
+```{r echo=FALSE, warning=FALSE, Exploring_Unemployment_4}
 
 d <- ggplot(df, aes(x = contb_emp_status, y = cand_party))
 d + geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
@@ -689,7 +746,7 @@ Interesting: it seems that a much higher percentage of people without employment
 
 So, let's see **for whom**...
 
-```{r echo=FALSE, Exploring_Unemployment_5}
+```{r echo=FALSE, warning=FALSE, Exploring_Unemployment_5}
 
 ########################## TAKE THIS ONE ##########################
 d <- ggplot(df, aes(x = contb_emp_status, y = cand_nm))
@@ -737,87 +794,200 @@ I don't want to get into this. So let's rather wrap it up :)
 
 ---
 
-# Discussion of the Analysis
+# Pt. 3: Discussion of the Analysis
 
-### Structure of the dataset
+## Structure of the dataset
 
 The dataset consists mainly of categorical variables, such as `cand_nm`, `contbr_occupation` or `contbr_zip`. All these are interesting to put in context with the one continuous variable `cont_receipt_amt`, and of course the **amount of rows**.
 
 A more thorough overview of the data can be taken from the official site:
 [ftp://ftp.fec.gov/FEC/Presidential_Map/2016/DATA_DICTIONARIES/CONTRIBUTOR_FORMAT.txt](ftp://ftp.fec.gov/FEC/Presidential_Map/2016/DATA_DICTIONARIES/CONTRIBUTOR_FORMAT.txt)
 
-### Main feature(s) of interest in the dataset
+## Main feature(s) of interest in the dataset
 
 How is the number of individual contributions and the amount of money gained through them spread out among the different candidates.
 In further abstraction it is interesting to look at the same with aggregating or subsetting the dataset (e.g. by gender of the candidate, or by origin city of the contributor).
 
-### Other features that help to support the investigation into the features of interest
+## Other features that help to support the investigation into the features of interest
 
 I found it interesting to add the population count of the cities in CA, to be able to calculate a ratio regarding how many contributions and how much money in total, respectively, was given by city in relations to the number of inhabitants.
 
-### New variables created (indirectly) from existing variables
+## New variables created (indirectly) from existing variables
 
-I created three new columns containing some new variables:
+I created some new columns containing new variables:
 
 - **cand_gender**, defining the gender of the presidential candidate (`'F'` for "female" and `'M'` for "male")
 - **cand_party**, defining the party affiliation of the candidate (`'D'` for "Democrats", `'R'` for "Republicans", and `'G'` for "Greens")
 - **POPESTIMATE2012**, containing the population estimates of the CA cities for 2012, taken from a different governmental source online
 - **contb_emp_status**, where I reduced the `contbr_occupation` to show only whether a contributor was employed or not
 
-### **Investigated features**: unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+## Strongest relationship discovered
 
----
-
-### Relationships observed in the bivariate part of the investigation. Variations of the investigated features in relation with other features of the dataset.
-
-### Interesting relationships between other features (not the main feature(s) of interest)
-
-### Strongest relationship discovered
-
-In my opinion the strongest relationship that I kept discovering over different plots, was the amount of contributions received, that was very clearly "won" by Sanders, Bernard.
-
----
-
-### Relationships observed in the multivariate part of the investigation. Features that strengthened each other in terms of looking at your feature(s) of interest
-
-### Interesting or surprising interactions between features
-
-### OPTIONAL: Models created with the dataset. Strengths and limitations of the model.
+In my opinion the strongest relationship that I kept discovering over different plots, was that the **number of contributions received**, was very clearly "won" by **one candidate**: _Sanders, Bernard_.
 
 ------
 
-# Final Plots and Summary
+# Pt. 4: Final Plots and Summary
 
-### Plot One
+## Plot One
+
 ```{r echo=FALSE, Plot_One}
+#cand_id_map
+still_cand = c('P60007168', 'P60006723', 'P60005915', 'P00003392', 'P60003670', 'P80001571', 'P60006111')
+# update the cand_id_map to current candidates
+c_cand_id_map <- subset(cand_id_map, cand_id %in% still_cand)
+# limit the dataset to contributions associated with current candidates
+current_cands <- subset(df, df$cand_id %in% c_cand_id_map$cand_id)
+# sum the contributions (including substracting the refunds)
+c_party_cand_money <- aggregate(contb_receipt_amt ~ cand_party + cand_nm, data = current_cands, sum)
+# rearrange factors for visualization
+c_party_cand_money$cand_nm_ord <- factor(c_party_cand_money$cand_nm, levels=c("Sanders, Bernard", "Clinton, Hillary Rodham", "Trump, Donald J.", "Rubio, Marco", "Kasich, John R.", "Cruz, Rafael Edward 'Ted'", "Carson, Benjamin S."))
+
+# I'll employ a function to display the amounts more accessible.
+# Resource: http://stackoverflow.com/questions/11610377/how-do-i-change-the-formatting-of-numbers-on-an-axis-with-ggplot
+fancy_scientific <- function(l) {
+     # turn in to character string in scientific notation
+     l <- format(l, scientific = TRUE)
+     # quote the part before the exponent to keep all the digits
+     l <- gsub("^(.*)e", "'\\1'e", l)
+     # turn the 'e+' into plotmath format
+     l <- gsub("e", "%*%10^", l)
+     # return this as an expression
+     parse(text=l)
+}
+# plot the graph
+ggplot(c_party_cand_money, aes(cand_party, contb_receipt_amt, fill=cand_nm_ord)) +
+  scale_x_discrete(labels=c('D' = 'Democrats', 'R' = 'Republicans')) +
+  scale_y_continuous(labels=fancy_scientific) +
+  geom_bar(stat='identity', alpha=0.8) +
+  ggtitle('Individual Contributions to the 2016 Presidential Elections') +
+  theme(plot.title = element_text(size = 14)) +
+  labs(x = 'Political Party', y = 'Amount in USD') +
+  guides(fill=guide_legend(title="Candidates"))
 
 ```
 
-### Description One
+## Description One
 
+In this graph displays how much money did each party and each candidate receive through individual contributions for the presidential elections in 2016.
 
-### Plot Two
-```{r echo=FALSE, Plot_Two}
+It shows values only for those (main) candidates that are currently still running for the presidency in the primaries (as of 2016-03-02 and from [here]( http://www.theatlantic.com/politics/archive/2016/03/2016-election/384828/)).
+
+We can see the absolute amounts of money in USD that each of the two major political parties in the US received through individual contributions.
+
+It is immediately obvious, that the **democratic party** obtained more than twice the amount of contributions than the **republican party** managed to lucrate. 
+
+The contributions are further subdivided to display the amounts that each individual candidate received.
+
+Here **Hillary Clinton** sticks out with an amazingly big sum of contribution-money received. She alone got more Dollars than all the other candidates combined.
+
+---
+
+## Plot Two
+
+```{r echo=FALSE, warning=FALSE, Plot_Two}
+
+ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) +
+  geom_jitter(alpha=0.1) + 
+  # limiting the graph to the cities with the most contributions
+  scale_y_discrete(limits=c(five_cities)) +
+  ggtitle('Individual Contributions to the US Presidential elections\nin the 5 CA cities with the highest number of Contributions') +
+  labs(x = 'Amount in USD', y = 'Cities with more than 30 000 contributions')
 
 ```
 
-### Description Two
+## Description Two
 
+The graph shows the 5 cities in California, where the highest number of contributions were given to the candidates of the 2016 presidential elections.
 
-### Plot Three
-```{r echo=FALSE, Plot_Three}
+While most of them are also among the 5 most populous cities in CA, **Oakland** holds only the 8th place in [that ranking](https://en.wikipedia.org/wiki/List_of_largest_California_cities_by_population).
+This means that it has an unusually high ratio of contributions per capita.
+
+Another interesting feature of this graph are the clear **vertical lines**. These lines denote most likely full-number-amounts and/or contribution-limits defined by law.
+
+---
+
+## Plot Three
+
+```{r echo=FALSE, warning=FALSE, Plot_Three}
+
+# plotting the graph for current candidates
+ggplot(current_cands, aes(x = contb_emp_status, y = cand_nm)) +
+  geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
+  scale_size_area(name="Scale of\nproportions\n(of number of\ncontributions\nreceived)", max_size = 20) +
+  ggtitle('Number of Contributions to US Presidential Candidates 2016\nby Employment Status') +
+  labs(x = 'Employment Status of Contributor', y = 'Candidate Name') +
+  scale_color_discrete(name="Political Party",
+                         breaks=c('D', 'R'),
+                         labels=c('Democrats', 'Republicans'))
 
 ```
 
-### Description Three
+## Description Three
+
+This graphs gives some insight as to which candidates of the 2016 presidential elections did people **without employment** contribute to.
+
+While most individual contributions come from people with employment, only three candidates received a significant amount of money from people who declared themselves as `NOT EMPLOYED`. These are:
+
+- Sanders, Bernard
+- Clinton, Hillary Rodham
+- Trump, Donald J.
+
+It is interesting to see that most of the contributions of this sector of society went to the Democrats, and yet again the largest part to _Sanders, Bernard_.
+
+Many **college and university students** are most likely counted among the `NOT EMPLOYED`. _Sanders, Bernard_ is [advocating free tuition for public colleges and universities](https://berniesanders.com/issues/its-time-to-make-college-tuition-free-and-debt-free/), and enjoys high popularity among students. This might explain the large number of individual contributions received from people that are "unemployed".
 
 ------
 
-# Reflection
+# Pt. 5: Reflection
+
+For me this was a very interesting project to work on. Being in the USA, I get constantly exposed to the upcoming (and long-lasting) process of narrowing down the presidential candidates.
+
+Being able to **dive into the topic by doing data analysis** gave me an interesting new way of approaching the topic, and I believe I managed to get a much more wholesome picture of what is currently going on. Working on the project made me investigate some auxiliary topics regarding US politics that were (more or less) necessary to perform the analyses that I chose to do. Further, having raw data at hand and `R` as a tool to take it apart and put it together, allowed me an exciting venture into _Exploratory Data Analysis_.
+
+I truly felt it as what its name implies :)
+
+I had not used `R` before, and the language seems to be differently structured than python, which I am more familiar with. I repeatedly noticed how I was trying to solve tasks wanting to loop over the dataframe, instead of e.g. subsetting it.
+However, I believe that through working on the project I managed to get a good beginner's grasp on the language, and especially on working with `ggplot`.
+I thoroughly enjoy the **layered structure** that `ggplot` uses to build graphs and found it to be rather intuitive and powerful.
+
+I've spent a rather large amount of time figuring out some details about how to tweak these layers to display the graphs in specific ways.
+The ability to **format and reduce information** contained within a graph can make a huge difference regarding how accessible it will feel and how easily it can be read.
+
+Digesting the discovered insights seems to me a crucial part of communicating the results of the analysis, and formatting options of `ggplot` are ample in providing these opportunities.
+
+---
+
+**Certain decisions** during my analysis were also **influencing the final outcomes**. For example regarding the Second Plot, I originally wanted to display both aspects that the original graph that utilizes all of the data shows - the horizontal and the vertical lines. However, I did not manage to achieve a certain aspect of the final visual formatting (handling the large amount of categorical values = city names on the y-axis satisfactorily), so I ended up deciding to instead reduce the information I will present to a smaller subset of the data.
+
+Through this decision I effectively lost some part of the story that the data could tell, however the focus allows for another aspect to be more present.
+I believe that these kinds of choices are often necessary to take. Big data can tell an infinite amount of stories, and it always depends on which parts do I focus on, which variables do I put into context, and what type of visualization will I choose for it.
+
+It's a sea of data out there, often it can be interesting to just take a look at one aspect of its shore.
+
+---
+
+Throughout my analysis I kept encountering issues that required me to restructure the data I was using, or become more specific in **which part of it to access**.
+
+Some findings lead me forward, and even promoted me to **look for additional data** outside of the dataset provided (gender of the candidates, which candidates are currently still in the Primaries, but also finding **population estimates for all CA cities**).
+
+Many investigations died down at a certain point, when I started to lose interest to continue exploring that path. However, I am aware that there are **tons** of directions to take and questions to explore further. :)
+
+E.g. I eventually abandoned comparing the ratios of population information of the CA cities to the number or summed amounts of contributions given in those cities.
+However, this would be a very interesting aspect of the data to explore further.
+
+Also, I've narrowed down the question of _which candidates will people of certain employment groups more likely contribute to_, by **only investigating unemployed contributors**.
+It would be equally interesting to select a certain occupation-group (or a cluster of specific jobs) and analyze them regarding to how high are their mean contributions and in the pocket of which party are they more likely to flow.
+
+---
+
+All in all I really enjoyed working on this project, learning to work with `R`, and educating myself more on political structures and current events in the area that I am currently spending my time in. Happily learning! :)
+
+---
 
 # References:
 
-**R:**
+**R general:**
 
 - http://stackoverflow.com/questions/8854046/duplicate-row-names-are-not-allowed-error-in-r-programming
 - http://stackoverflow.com/questions/4605206/drop-data-frame-columns-by-name
@@ -830,11 +1000,25 @@ In my opinion the strongest relationship that I kept discovering over different 
 - https://stat.ethz.ch/R-manual/R-devel/library/base/html/merge.html
 - http://stackoverflow.com/questions/16516593/convert-from-lowercase-to-uppercase-all-values-in-all-character-variables-in-dat
 - http://stackoverflow.com/questions/13967063/remove-duplicate-rows-in-r
+- https://chemicalstatistician.wordpress.com/2015/02/03/how-to-get-the-frequency-table-of-a-categorical-variable-as-a-data-frame-in-r/
+- http://www.cookbook-r.com/Manipulating_data/Renaming_columns_in_a_data_frame/
+- https://discussions.udacity.com/t/removing-rows-by-conditions-compared-to-another-row/159261
+- http://stackoverflow.com/questions/25962909/remove-duplicates-based-on-2nd-column-condition
+- http://stackoverflow.com/questions/20204257/subset-data-frame-based-on-counts-of-items-in-one-variable
+- http://yihui.name/knitr/demo/output/
 
-**ggplot:**
+**R {ggplot}:**
 
 - http://stackoverflow.com/questions/34963138/error-stat-count-in-ggplot2
 - http://stackoverflow.com/questions/3744178/ggplot2-sorting-a-plot
+- http://stackoverflow.com/questions/15015356/how-to-do-selective-labeling-with-ggplot-geom-point
+- http://stackoverflow.com/questions/14622421/how-to-change-legend-title-in-ggplot-density
+- https://trinkerrstuff.wordpress.com/2012/10/15/how-do-i-re-arrange-ordering-a-plot/
+- http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/
+- http://www.sthda.com/english/wiki/ggplot2-axis-ticks-a-guide-to-customize-tick-marks-and-labels
+- http://www.r-bloggers.com/how-to-format-your-chart-and-axis-titles-in-ggplot2/
+- http://stackoverflow.com/questions/11610377/how-do-i-change-the-formatting-of-numbers-on-an-axis-with-ggplot
+- http://www.cookbook-r.com/Graphs/Legends_(ggplot2)/
 
 **US politics:**
 
@@ -843,3 +1027,5 @@ In my opinion the strongest relationship that I kept discovering over different 
 - https://en.wikipedia.org/wiki/Jill_Stein
 - https://ballotpedia.org/Campaign_finance_requirements_in_California
 - https://ballotpedia.org/California_Proposition_34,_Limits_on_Campaign_Contributions_(2000)
+- https://berniesanders.com/issues/its-time-to-make-college-tuition-free-and-debt-free/
+- https://www.washingtonpost.com/politics/in-bernie-sanders-anxious-millennials-find-a-candidate-who-speaks-to-them/2015/10/27/923d0b74-66cc-11e5-9223-70cb36460919_story.html
