@@ -7,8 +7,12 @@ output:
     toc: true
     depth: 4
 ---
+```{r global_options, include=FALSE}
+# setting global chunk options to avoid printing r-code, messages and warnings
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+```{r packages}
 # loading the packages I use
 library(ggplot2)
 library(reshape2)
@@ -76,11 +80,11 @@ However, there is also another "hidden" numerical value associated with the data
 
 ## Ideas and Interests that I will explore
 
-+ Who got the most contributions? Which person, which party, which gender?
+- Who got the most contributions? Which person, which party, which gender?
 
 - Which city contributed the most, and to whom (also: in relation to the number of citizens)
 
-+ How many "NOT EMPLOYED" people contributed to the campaigns as compared to people with employment; Also: whom did the "NOT EMPLOYED" support the most?
+- How many "NOT EMPLOYED" people contributed to the campaigns as compared to people with employment; Also: whom did the "NOT EMPLOYED" support the most?
 
 ---
 
@@ -88,7 +92,7 @@ However, there is also another "hidden" numerical value associated with the data
 
 In order to be able to load the data, I had to add a comma at the end of the header row in my .csv file.
 
-```{r echo=FALSE, Load_the_Data}
+```{r Load_the_Data}
 # Load the Data
 setwd('~/Desktop/p4_US_campaign_funding')
 df <- read.csv('P00000001-CA.csv')
@@ -103,7 +107,7 @@ For some of my questions, I am interested to take a look at the data also depend
 
 First I'll be mapping Candidate names to Candidate IDs. This I'll do so that I will be able to refer to a cand_id when passing a function, which is easier than writing out the full name.
 
-```{r echo=FALSE, Adding_Columns_1}
+```{r Adding_Columns_1}
 ## PART1 - Mapping
 
 # select only rows that are not duplicates in the cand_id value
@@ -119,7 +123,10 @@ cand_id_map <- candidates[keeps]
 
 # I'd also like to have the party associated with the candidate
 democrats <- c('P60007168', 'P00003392', 'P60009685', 'P60008885', 'P60007671')
-republicans <- c('P60006723', 'P60008521', 'P60008059', 'P60005915', 'P60003670', 'P80001571', 'P60007242', 'P60006111', 'P40003576', 'P20002721', 'P60008398', 'P80003478', 'P60007572', 'P60007697', 'P20003281', 'P60006046')
+republicans <- c('P60006723', 'P60008521', 'P60008059', 'P60005915',
+                 'P60003670', 'P80001571', 'P60007242', 'P60006111',
+                 'P40003576', 'P20002721', 'P60008398', 'P80003478',
+                 'P60007572', 'P60007697', 'P20003281', 'P60006046')
 greens <- c('P20003984')
 
 # double checking
@@ -131,10 +138,11 @@ greens <- c('P20003984')
 Now I can add this new column to the data.frame.
 There is one member of the green party 'G', the republicans will get the value 'R' and the democrats the value 'D'
 
-```{r echo=FALSE, Adding_Columns_2}
+```{r Adding_Columns_2}
 ## PART2 - Adding the Columns
 
-df$cand_party <- ifelse(df$cand_nm != 'Stein, Jill', ifelse(df$cand_id %in% republicans, "R", "D"), "G")
+df$cand_party <- ifelse(df$cand_nm != 'Stein, Jill',
+                        ifelse(df$cand_id %in% republicans, "R", "D"), "G")
 #head(subset(df, cand_party == "G"))
 
 # and also the gender of the candidate
@@ -153,8 +161,9 @@ df$cand_gender <- ifelse(df$cand_nm %in% female, "F", "M")
 
 There is quite a big amount of data that I am not intending to use for my exploration. These include e.g. `conbr_st`, which is in my case always `CA`, or `file_num`, a unique number used to link the transactions to the reports (which I'll also drop).
 
-```{r echo=FALSE, Removing_Columns}
-discard <- c('cmte_id', 'contbr_st', 'receipt_desc', 'memo_cd', 'memo_text', 'form_tp', 'file_num', 'election_tp', 'X')
+```{r Removing_Columns}
+discard <- c('cmte_id', 'contbr_st', 'receipt_desc', 'memo_cd',
+             'memo_text', 'form_tp', 'file_num', 'election_tp', 'X')
 df <- df[ , !(names(df) %in% discard)]
 #names(df)
 ```
@@ -167,7 +176,7 @@ After having cleaned and adapted the dataset to my wishes, I can start into my e
 
 For example, I can query how many individual contributions did each candidate receive, e.g. Hillary Clinton:
 
-```{r echo=FALSE, First_Steps}
+```{r First_Steps}
 # E.g. for Hillary Clinton:
 sum(df$cand_id == 'P00003392')
 ```
@@ -183,36 +192,40 @@ Which gender received more contributions, or more money? Which political party?
 
 ### PART 1: the mean and distributions
 
-```{r echo=FALSE, Exploring_Most_Money_1_1}
+```{r Exploring_Most_Money_1_1}
 # calculating the mean of the contributions for each candidate
-mean_contrib_per_cand <- aggregate(contb_receipt_amt ~ cand_nm, data = df, mean)
+mean_contrib_per_cand <- aggregate(contb_receipt_amt ~ cand_nm,
+                                   data = df, mean)
 # adding a count of contributions
 mean_contrib_per_cand$count <- table(df$cand_nm)
 #mean_contrib_per_cand
 
 # cool graph showing the distributions!
 ggplot(df, aes(cand_nm, contb_receipt_amt)) +
-  geom_boxplot()
+  geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 90))
 ```
 
 Constructing a frequency plot makes me see something about _Sanders, Bernard_ (who has a big dot low down). Some candidates have a small distribution, and some a wider one, there is another person with a big dot at the bottom, yet also a quite big one higher up (i think this is _Clinton, Hillary_); and further one person with a very high distribution up and down, but also a strong base it seems (_Cruz, Ted_?).
 
-```{r echo=FALSE, Exploring_Most_Money_1_2}
+```{r Exploring_Most_Money_1_2}
 ggplot(df, aes(contb_receipt_amt, cand_nm)) +
   geom_count()
 
 # this graph could be interesting
 ggplot(mean_contrib_per_cand, aes(cand_nm, contb_receipt_amt)) +
   geom_density() + 
-  geom_label(aes(label=cand_nm))
+  geom_label(aes(label=cand_nm)) +
+  theme(axis.text.x = element_blank())
 
 ```
 
 Cleaned up the graph a bit and reordered ascending! This plot gives a nice overview of the mean contributions per candidate! Maybe it's a keeper ; )
 
-```{r echo=FALSE, Exploring_Most_Money_1_3}
+```{r Exploring_Most_Money_1_3}
 ########################## TAKE THIS ONE ##########################
-ggplot(mean_contrib_per_cand, aes(reorder(cand_nm, -contb_receipt_amt), contb_receipt_amt)) +
+ggplot(mean_contrib_per_cand, 
+       aes(reorder(cand_nm, -contb_receipt_amt), contb_receipt_amt)) +
   geom_density() + 
   coord_flip()
 # label is also a cool way to do it, but better this!
@@ -225,14 +238,15 @@ ggplot(mean_contrib_per_cand, aes(reorder(cand_nm, -contb_receipt_amt), contb_re
 
 Most of the contributions are below 1000 $!
 
-```{r echo=FALSE, message=FALSE, Exploring_Most_Money_2_1}
+```{r Exploring_Most_Money_2_1}
 ggplot(df, aes(contb_receipt_amt)) +
   geom_freqpoly()
 
 # sum all receipt amounts, aggregating rows based on candidate name
 money_by_cand <- aggregate(contb_receipt_amt ~ cand_nm, data = df, sum)
 # now I can make a graph, maybe interesting with color and alpha
-ggplot(aes(x = contb_receipt_amt, y = cand_nm, alpha=0.1, color=cand_nm), data = df) +
+ggplot(aes(x = contb_receipt_amt, y = cand_nm, alpha=0.1, color=cand_nm),
+       data = df) +
   geom_jitter() +
   scale_x_continuous() +
   # removing the legends for better visibility
@@ -245,13 +259,14 @@ ggplot(aes(x = contb_receipt_amt, y = cand_nm, alpha=0.1, color=cand_nm), data =
 
 The previous graph gives me negative values for amounts, which is at first very confusing. So I construct a vector holding only the **refunds**.
 
-```{r echo=FALSE, Exploring_Most_Money_2_2}
+```{r Exploring_Most_Money_2_2}
 
 neg_contb_amt <- subset(df, contb_receipt_amt < 0)
 #head(neg_contb_amt)
 only_refunds <- subset(df, contb_receipt_amt < 0)
 # sum all receipt amounts, aggregating rows based on candidate name
-refunds_by_contb <- aggregate(contb_receipt_amt ~ contbr_nm, data = only_refunds, sum)
+refunds_by_contb <- aggregate(contb_receipt_amt ~ contbr_nm,
+                              data = only_refunds, sum)
 #head(refunds_by_contb)
 nrow(refunds_by_contb)
 ```
@@ -259,16 +274,17 @@ nrow(refunds_by_contb)
 Seems there are nearly 1500 "contributors" who actually got more money refunded than what they gave.
 
 And some gave some, but also got some back (or got some back multiple times?):
-```{r echo=FALSE, Exploring_Most_Money_2_3}
+```{r Exploring_Most_Money_2_3}
 nrow(only_refunds)
 ```
 
 So I tried a plot for these refunds (which was too big, so I'll take a look at the most Dollars)
 
-```{r echo=FALSE, Exploring_Most_Money_2_4}
+```{r Exploring_Most_Money_2_4}
 
 # a plot containing the highest refunded people
-ggplot(subset(refunds_by_contb, contb_receipt_amt < -10000), aes(contb_receipt_amt, contbr_nm)) +
+ggplot(subset(refunds_by_contb, contb_receipt_amt < -10000),
+       aes(contb_receipt_amt, contbr_nm)) +
   geom_point()
 ```
 
@@ -281,10 +297,11 @@ Here's some info: https://ballotpedia.org/California_Proposition_34,_Limits_on_C
 
 Well, so let's see who *gave* the most:
 
-```{r echo=FALSE, Exploring_Most_Money_2_5}
+```{r Exploring_Most_Money_2_5}
 
 only_contribs <- subset(df, contb_receipt_amt > 0)
-ggplot(subset(only_contribs, contb_receipt_amt > 10000), aes(contb_receipt_amt, contbr_nm)) +
+ggplot(subset(only_contribs, contb_receipt_amt > 10000),
+       aes(contb_receipt_amt, contbr_nm)) +
   geom_point()
   
 top_givers <- subset(only_contribs, contb_receipt_amt > 10000)
@@ -298,7 +315,7 @@ I also spotted potentially erroneous data, with the contributor `DE GROOTE, DOUG
 
 Maybe can check :)
 
-```{r echo=FALSE, Exploring_Most_Money_2_6}
+```{r Exploring_Most_Money_2_6}
 
 #top_givers
 duplicated(top_givers$tran_id)
@@ -307,7 +324,7 @@ duplicated(top_givers$tran_id)
 Yep, seems that some of those transactions are listed more often in the dataset.
 Actually quite a lot of them! 7 `TRUE`!
 
-```{r echo=FALSE, Exploring_Most_Money_2_7}
+```{r Exploring_Most_Money_2_7}
 
 dup_givers <- subset(top_givers, duplicated(top_givers$tran_id) == TRUE)
 #dup_givers
@@ -324,7 +341,7 @@ Well. But I'm not gonna go hunt down these individuals :)
 
 Number of contributions per gender of candidate
 
-```{r echo=FALSE, Exploring_Most_Money_3_1}
+```{r Exploring_Most_Money_3_1}
 
 ggplot(df, aes(cand_gender)) + geom_bar() + scale_x_discrete()
 
@@ -332,7 +349,7 @@ ggplot(df, aes(cand_gender)) + geom_bar() + scale_x_discrete()
 
 Total amount of money through contributions per gender of candidate
 
-```{r echo=FALSE, Exploring_Most_Money_3_2}
+```{r Exploring_Most_Money_3_2}
 
 gender_money <- aggregate(contb_receipt_amt ~ cand_gender, data = df, sum)
 #head(gender_money)
@@ -351,7 +368,7 @@ It could be interesting to take a look at the mean contribution per F/M candidat
 
 So here are the summaries for the contributions for the *female candidates*, then for the *male candidates*, and finally for the whole dataset combined:
 
-```{r echo=FALSE, Exploring_Most_Money_3_3}
+```{r Exploring_Most_Money_3_3}
 summary(subset(df, cand_gender == 'F')$contb_receipt_amt)
 summary(subset(df, cand_gender == 'M')$contb_receipt_amt)
 
@@ -362,7 +379,7 @@ summary(df$contb_receipt_amt)
 
 I'll start with a generous binwidth of 1000:
 
-```{r echo=FALSE, Exploring_Most_Money_3_4}
+```{r Exploring_Most_Money_3_4}
 
 # making bins for all the money
 df$money_bin <- cut(df$contb_receipt_amt, breaks = seq(0, 11000, by = 1000))
@@ -391,9 +408,11 @@ ggplot(df, aes(money_bin)) + geom_bar(stat = 'count')
 
 This graphic is pretty useless - nearly every contribution falls within the first bin, there are very few that are above 1000. So i can adjust the binnning:
 
-```{r echo=FALSE, Exploring_Most_Money_3_5}
+```{r Exploring_Most_Money_3_5}
 
-df$money_bin <- cut(df$contb_receipt_amt, breaks = c(0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 11000))
+df$money_bin <- cut(df$contb_receipt_amt, 
+                    breaks = c(0, 100, 200, 300, 400, 500, 600, 700,
+                               800, 900, 1000, 2000, 3000, 11000))
 #head(df)
 ggplot(df, aes(money_bin)) + geom_bar(stat = 'count')
 
@@ -401,7 +420,7 @@ ggplot(df, aes(money_bin)) + geom_bar(stat = 'count')
 
 Whoa! Most contributions are actually between 0-100$!! So there are many many small contributions that were made in CA. Let's look at this data in a *table*:
 
-```{r echo=FALSE, Exploring_Most_Money_3_6}
+```{r Exploring_Most_Money_3_6}
 
 table(df$money_bin)
 
@@ -415,7 +434,7 @@ Interesting, because I already saw that most low contributions went to one candi
 
 I'll go forward displaying proportions of female/male candidates in the respective parties
 
-```{r echo=FALSE, Exploring_Most_Money_3_7}
+```{r Exploring_Most_Money_3_7}
 
 ggplot(df, aes(x = cand_gender, y = cand_party)) + 
   geom_count(aes(size = ..prop.., group = cand_party)) +
@@ -427,25 +446,30 @@ The proportions on how many candidates of the respective gender are running in t
 
 Let's see a graph plotting the statistical percentage of money per candidate per gender
 
-```{r echo=FALSE, Exploring_Most_Money_3_8}
+```{r Exploring_Most_Money_3_8}
 
-gender_money$gen_mon_perc <- ifelse(gender_money$cand_gender == 'F', gender_money$contb_receipt_amt / 3, gender_money$contb_receipt_amt / 19)
+gender_money$gen_mon_perc <- ifelse(gender_money$cand_gender == 'F',
+                                    gender_money$contb_receipt_amt / 3,
+                                    gender_money$contb_receipt_amt / 19)
 #gender_money
 ggplot(gender_money, aes(cand_gender, contb_receipt_amt)) +
   scale_x_discrete() +
   geom_bar(stat='identity', alpha=0.5) +
-  geom_bar(aes(cand_gender, gen_mon_perc), stat='identity', fill=c('pink', 'lightblue'), alpha=0.5)
+  geom_bar(aes(cand_gender, gen_mon_perc), stat='identity',
+           fill=c('pink', 'lightblue'), alpha=0.5)
 
 ```
 
 But of course that's **VERY** misleading!... _Clinton, Hillary_ got so much of the amounts contributed to female candidates, that we should make this more clear:
 
-```{r echo=FALSE, Exploring_Most_Money_3_9}
+```{r Exploring_Most_Money_3_9}
 
-gender_cand_money <- aggregate(contb_receipt_amt ~ cand_gender + cand_nm, data = df, sum)
+gender_cand_money <- aggregate(contb_receipt_amt ~ cand_gender + cand_nm,
+                               data = df, sum)
 #gender_cand_money
 ggplot(gender_cand_money) + scale_x_discrete() +
-  geom_bar(aes(cand_gender, contb_receipt_amt, fill=cand_nm), stat='identity', alpha=0.8)
+  geom_bar(aes(cand_gender, contb_receipt_amt, fill=cand_nm),
+           stat='identity', alpha=0.8)
   
 ```
 
@@ -457,12 +481,14 @@ As we can see, _Hillary Clinton_ received by far the largest amount of money thr
 
 I can also see, that Clinton and Sanders make the two biggest single sections, and they are both with the Democrats. Therefore it would be interesting to plot money per party instead of by gender.
 
-```{r echo=FALSE, Exploring_Most_Money_4_1}
+```{r Exploring_Most_Money_4_1}
 
 ########################## TAKE THIS ONE ##########################
-party_cand_money <- aggregate(contb_receipt_amt ~ cand_party + cand_nm, data = df, sum)
+party_cand_money <- aggregate(contb_receipt_amt ~ cand_party + cand_nm,
+                              data = df, sum)
 ggplot(party_cand_money) + scale_x_discrete() +
-  geom_bar(aes(cand_party, contb_receipt_amt, fill=cand_nm), stat='identity', alpha=0.8)
+  geom_bar(aes(cand_party, contb_receipt_amt, fill=cand_nm),
+           stat='identity', alpha=0.8)
 
 ```
 
@@ -475,9 +501,11 @@ Whereas the contributions to the green party are so tiny, that they become invis
 
 Number of contributions per candidate:
 
-```{r echo=FALSE, message=FALSE, Exploring_Most_Money_5_1}
+```{r Exploring_Most_Money_5_1}
 
-qplot(cand_nm, data = subset(df, table(df$cand_nm) > 500))
+ggplot(data = subset(df, table(df$cand_nm) > 500), aes(cand_nm)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 90))
 
 # how many contributions per candidate
 table(df$cand_nm)
@@ -491,11 +519,12 @@ While most are vanishingly small in comparison, four candidates stick out in ter
 
 Let's look at the money amassed through the contributions:
 
-```{r echo=FALSE, message=FALSE, Exploring_Most_Money_5_3}
+```{r Exploring_Most_Money_5_3}
 
 ggplot(df, aes(sum(contb_receipt_amt))) +
   geom_histogram() +
-  facet_wrap(~cand_nm)
+  facet_wrap(~cand_nm) +
+  theme(axis.text.x = element_blank())
 
 ```
 
@@ -505,7 +534,7 @@ These plots are not very interesting and don't tell me too much new, so enough o
 
 ## QUESTION 2: _Which city contributed the most, and to whom?_
 
-```{r echo=FALSE, Exploring_Cities_1}
+```{r Exploring_Cities_1}
 ggplot(df, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
   geom_bin2d()
 
@@ -513,7 +542,7 @@ ggplot(df, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
 
 The next one is actually quite interesting, because it shows how people often give full-number-amounts of money (with the distinct lines going vertical).
 
-```{r echo=FALSE, Exploring_Cities_2}
+```{r Exploring_Cities_2}
 ggplot(df, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
   geom_count()
 
@@ -524,19 +553,23 @@ Here i'll apply `geom_jitter()` only to the actual **contributions**, leaving ou
 It nicely shows how much do most people donate (first big bar to the right of 0), about which cities had the most contributions (horizontal black lines), and where are there common discrete jumps, maybe related to regulations such as donation limits (vertical lines).
 This is a nice graph :)
 
-```{r echo=FALSE, Exploring_Cities_3}
+```{r Exploring_Cities_3}
 
 ########################## TAKE THIS ONE ##########################
 # jitter does a similar thing as geom_point (or geom_count)
 # setting an `alpha` to better see the density of the distribution
-ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
+ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) +
+  scale_y_discrete() +
   geom_jitter(alpha=0.1) +
-  # removing the ticks and text of the y axis, because there are too many to show
+  # removing the ticks & text of the y axis, because there are too many to show
   theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
 
-# TODO: clean it up, remove cities (keep only the ones that gave the most money in total), research regarding contribution limits; maybe color dots regarding which party was donated to
+# IDEA: clean it up, remove cities (keep only the ones that gave the most
+# money in total), research regarding contribution limits; maybe color dots 
+# regarding which party was donated to
 
-all_cities <- aggregate(contb_receipt_amt ~ contbr_city, data=only_contribs, sum)
+all_cities <- aggregate(contb_receipt_amt ~ contbr_city, data=only_contribs,
+                        sum)
 rich_cities <- subset(all_cities, contb_receipt_amt > 150000)
 #nrow(rich_cities)
 #head(rich_cities)
@@ -545,7 +578,7 @@ rich_cities <- subset(all_cities, contb_receipt_amt > 150000)
 
 Trying to remove cities and keep only the onese with high contribution amounts:
 
-```{r echo=FALSE, Exploring_Cities_4}
+```{r Exploring_Cities_4}
 
 ggplot(rich_cities, aes(contb_receipt_amt, contbr_city)) + scale_y_discrete() +
   geom_point()
@@ -562,7 +595,7 @@ I found some here: https://www.census.gov/popest/data/cities/totals/2012/SUB-EST
 The data is for 2012, but it's the most current one that is listing *cities* that I could find there.
 It's not perfect, but for now I just want to take a look :)
 
-```{r echo=FALSE, Exploring_Cities_5}
+```{r Exploring_Cities_5}
 
 pop_df <- read.csv('population_CA_2012.csv')
 #names(pop_df)
@@ -573,10 +606,12 @@ pop_df <- pop_df[, c('NAME', 'POPESTIMATE2012')]
 # removing the last word ('city') from the city names (see Resources)
 # ^ yay to stackoverflow! and the internet in general! :)
 pop_df$NAME <- sub(pop_df$NAME, pattern = " [[:alpha:]]*$", replacement = "")
-# converting the strings in the column to uppercase to match how they are stored in my df
+# converting the strings in the column to uppercase
+# to match how they are stored in the other df
 pop_df$NAME <- toupper(pop_df$NAME)
 # merge the two data.frames by the city-name columns
-only_contribs <- merge(only_contribs, pop_df, by.x = 'contbr_city', by.y = 'NAME')
+only_contribs <- merge(only_contribs, pop_df,
+                       by.x = 'contbr_city', by.y = 'NAME')
 #head(only_contribs)
 
 ggplot(only_contribs, aes(POPESTIMATE2012, contb_receipt_amt)) + geom_bin2d()
@@ -589,7 +624,7 @@ Could be interesting to display this with a `facet_wrap()`. However, there are t
 2. subsetting into categories of lower quartile, mean, upper quartile
 3. showing one plot for maybe the mean of each group
 
-```{r echo=FALSE, Exploring_Cities_6}
+```{r Exploring_Cities_6}
 
 ### this would be a nice multivariate analysis... just gotta manage it!
 # geom_count could be interesting, but it's simply too many cities.
@@ -603,12 +638,14 @@ Could be interesting to display this with a `facet_wrap()`. However, there are t
 
 ### Calculating the Ratios
 
-```{r echo=FALSE, Exploring_Cities_7}
+```{r Exploring_Cities_7}
 
 # calculating total amount of contributions per city
-total_contribs <- aggregate(data=only_contribs, contb_receipt_amt ~ contbr_city, sum)
+total_contribs <- aggregate(data=only_contribs,
+                            contb_receipt_amt ~ contbr_city, sum)
 # merging with population estimate for cities
-total_contribs <- merge(total_contribs, pop_df, by.x = 'contbr_city', by.y = 'NAME')
+total_contribs <- merge(total_contribs, pop_df,
+                        by.x = 'contbr_city', by.y = 'NAME')
 # removing duplicates
 total_contribs <- total_contribs[!duplicated(total_contribs), ]
 # calculating number of contributions per city
@@ -623,14 +660,13 @@ head(total_contribs)
 
 Oops, there is also data for "counties" in here, that have now the same name as some of the cities... so I'll have to remove the rows with the higher values for capita.
 
-```{r echo=FALSE, warning=FALSE, Exploring_Cities_8}
-# I set the 'warning=FALSE' option here because it otherwise knits a long streak of
-# "## Warning in FUN(X[[i]], ...): no non-missing arguments to min; returning Inf"
-# (I think) this Warning comes because not all i have duplicates
+```{r Exploring_Cities_8}
 
 # removing the counties (the row entries with the higher population estimates)
 # Resource: http://stackoverflow.com/questions/25962909/remove-duplicates-based-on-2nd-column-condition
-total_contribs <- total_contribs[with(total_contribs, ave(POPESTIMATE2012, contbr_city, FUN=min) == POPESTIMATE2012), ]
+total_contribs <- total_contribs[with(
+total_contribs, ave(POPESTIMATE2012, contbr_city, FUN=min) == POPESTIMATE2012
+  ), ]
 head(total_contribs)
 
 # IDEA: plot the relations in a meaningful graph (or graphs!)
@@ -641,7 +677,7 @@ That's better :)
 
 Here comes a bit more playing around while extracting the cities with the most contributions, and trying to use `melt()`.
 
-```{r echo=FALSE, warning=FALSE, Exploring_Cities_9}
+```{r Exploring_Cities_9}
 
 # vector with count of occurences
 city_contb_count <- table(df$contbr_city)
@@ -660,7 +696,7 @@ ggplot(m, aes(Var1, value)) + scale_x_discrete() +
 
 I'm looking to narrow down to find the cities with the most contributions. Trying different values, I found that using `30000` limits the amount of cities to
 
-```{r echo=FALSE, warning=FALSE, Exploring_Cities_10}
+```{r Exploring_Cities_10}
 
 length(names(city_contb_count[city_contb_count > 3000]))
 five_cities <- names(city_contb_count[city_contb_count > 3000])
@@ -673,12 +709,15 @@ which is something I can work with! :)
 Here's an interesting little fact:
 more than half the number of contributions come from only 5 cities! Percentage:
 
-```{r echo=FALSE, warning=FALSE, Exploring_Cities_11}
+```{r Exploring_Cities_11}
 
-# creating a df that contains only contributions made in the 5 cities with more than 30 000 contributions
-most_contribs <- subset(only_contribs, only_contribs$contbr_city %in% five_cities)
+# creating a df that contains only contributions made in the 5 cities
+# with more than 30 000 contributions
+most_contribs <- subset(only_contribs,
+                        only_contribs$contbr_city %in% five_cities)
 
-# calculating the percentage of contributions made in the 5 most-contribution-cities
+# calculating the percentage of contributions made
+# in the 5 most-contribution-cities
 nrow(most_contribs) / nrow(df) * 100
 
 ```
@@ -687,7 +726,7 @@ I'm more of a contry-boy myself and have enough of these cities, so I'll now mov
 
 ---
 
-## Question 3: _How much and to whom did `NOT EMPLOYED` give_
+## QUESTION 3: _How much and to whom did `NOT EMPLOYED` give_
 
 I am very perplexed and involved with the topic of homeless people in the US, so anything that goes into that direction rings a bell with me.
 Here I'm trying to investigate a little bit into the political direction that homeless might be having a tendency for.
@@ -698,10 +737,11 @@ Further, NOT EMPLOYED != homeless. There are quite a few people that are employe
 
 These graphs are not gonna show much about how much money was flowing, but rather is intended as a proxy on where does a certain section of society lean towards politically.
 
-```{r echo=FALSE, Exploring_Unemployment_1}
+```{r Exploring_Unemployment_1}
 
 # adding a column containing a pseudo-boolean gleaned from the employment data
-df$contb_emp_status <- ifelse(df$contbr_occupation == 'NOT EMPLOYED', 'not employed', 'employed')
+df$contb_emp_status <- ifelse(df$contbr_occupation == 'NOT EMPLOYED', 
+                              'not employed', 'employed')
 #head(df)
 # aggregating the amounts of money for each of the two groups
 empl_money <- aggregate(contb_receipt_amt ~ contb_emp_status, data=df, sum)
@@ -710,9 +750,10 @@ empl_money <- aggregate(contb_receipt_amt ~ contb_emp_status, data=df, sum)
 
 Who gave how much?
 
-```{r echo=FALSE, Exploring_Unemployment_2}
+```{r Exploring_Unemployment_2}
 
-ggplot(empl_money, aes(contb_emp_status, contb_receipt_amt)) + scale_x_discrete() +
+ggplot(empl_money, aes(contb_emp_status, contb_receipt_amt)) +
+  scale_x_discrete() +
   geom_bar(fill=c('gray', 'lightblue'), stat = 'identity')
   
 ```
@@ -720,7 +761,7 @@ ggplot(empl_money, aes(contb_emp_status, contb_receipt_amt)) + scale_x_discrete(
 Okay, this is not so exciting :)
 Wait...
 
-```{r echo=FALSE, Exploring_Unemployment_3}
+```{r Exploring_Unemployment_3}
 
 table(df$contb_emp_status)
 
@@ -729,7 +770,7 @@ table(df$contb_emp_status)
 There are very few `NOT EMPLOYED` compared to those with employment, so I'll need ratios
 
 Displaying proportions of which party did people with/without employment give contributions to:
-```{r echo=FALSE, warning=FALSE, Exploring_Unemployment_4}
+```{r Exploring_Unemployment_4}
 
 d <- ggplot(df, aes(x = contb_emp_status, y = cand_party))
 d + geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
@@ -746,7 +787,7 @@ Interesting: it seems that a much higher percentage of people without employment
 
 So, let's see **for whom**...
 
-```{r echo=FALSE, warning=FALSE, Exploring_Unemployment_5}
+```{r Exploring_Unemployment_5}
 
 ########################## TAKE THIS ONE ##########################
 d <- ggplot(df, aes(x = contb_emp_status, y = cand_nm))
@@ -764,9 +805,10 @@ When increasing the `max_size` also here it becomes even more clear how great th
 
 Let's look at this in another way:
 
-```{r echo=FALSE, Exploring_Unemployment_6}
+```{r Exploring_Unemployment_6}
 
-ggplot(subset(df, contb_emp_status == 'not employed'), aes(contb_emp_status, fill=cand_nm)) + scale_x_discrete() +
+ggplot(subset(df, contb_emp_status == 'not employed'),
+       aes(contb_emp_status, fill=cand_nm)) + scale_x_discrete() +
   geom_bar()
   
 ```
@@ -779,7 +821,7 @@ Thinking about occupation-voter distribution, now I'm wondering which party do I
 
 So I was collecting all the unique jobs present in the data.frame.
 
-```{r echo=FALSE, Exploring_Unemployment_7}
+```{r Exploring_Unemployment_7}
 
 jobs <- unique(df$contbr_occupation)
 #jobs
@@ -831,17 +873,26 @@ In my opinion the strongest relationship that I kept discovering over different 
 
 ## Plot One
 
-```{r echo=FALSE, Plot_One}
+```{r Plot_One}
 #cand_id_map
-still_cand = c('P60007168', 'P60006723', 'P60005915', 'P00003392', 'P60003670', 'P80001571', 'P60006111')
+still_cand = c('P60007168', 'P60006723', 'P60005915', 'P00003392', 
+               'P60003670', 'P80001571', 'P60006111')
 # update the cand_id_map to current candidates
 c_cand_id_map <- subset(cand_id_map, cand_id %in% still_cand)
 # limit the dataset to contributions associated with current candidates
 current_cands <- subset(df, df$cand_id %in% c_cand_id_map$cand_id)
 # sum the contributions (including substracting the refunds)
-c_party_cand_money <- aggregate(contb_receipt_amt ~ cand_party + cand_nm, data = current_cands, sum)
+c_party_cand_money <- aggregate(contb_receipt_amt ~ cand_party + cand_nm,
+                                data = current_cands, sum)
 # rearrange factors for visualization
-c_party_cand_money$cand_nm_ord <- factor(c_party_cand_money$cand_nm, levels=c("Sanders, Bernard", "Clinton, Hillary Rodham", "Trump, Donald J.", "Rubio, Marco", "Kasich, John R.", "Cruz, Rafael Edward 'Ted'", "Carson, Benjamin S."))
+c_party_cand_money$cand_nm_ord <- factor(c_party_cand_money$cand_nm,
+                                         levels=c("Sanders, Bernard",
+                                                  "Clinton, Hillary Rodham",
+                                                  "Trump, Donald J.",
+                                                  "Rubio, Marco",
+                                                  "Kasich, John R.",
+                                                  "Cruz, Rafael Edward 'Ted'",
+                                                  "Carson, Benjamin S."))
 
 # I'll employ a function to display the amounts more accessible.
 # Resource: http://stackoverflow.com/questions/11610377/how-do-i-change-the-formatting-of-numbers-on-an-axis-with-ggplot
@@ -856,7 +907,8 @@ fancy_scientific <- function(l) {
      parse(text=l)
 }
 # plot the graph
-ggplot(c_party_cand_money, aes(cand_party, contb_receipt_amt, fill=cand_nm_ord)) +
+ggplot(c_party_cand_money,
+       aes(cand_party, contb_receipt_amt, fill=cand_nm_ord)) +
   scale_x_discrete(labels=c('D' = 'Democrats', 'R' = 'Republicans')) +
   scale_y_continuous(labels=fancy_scientific) +
   geom_bar(stat='identity', alpha=0.8) +
@@ -885,12 +937,14 @@ Here **Hillary Clinton** sticks out with an amazingly big sum of contribution-mo
 
 ## Plot Two
 
-```{r echo=FALSE, warning=FALSE, Plot_Two}
+```{r Plot_Two}
 
 ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) +
   geom_jitter(alpha=0.1) + 
-  # limiting the graph to the cities with the most contributions
-  scale_y_discrete(limits=c(five_cities)) +
+  # limiting the data in the graph to the cities with the most contributions OR
+  #scale_y_discrete(limits=c(five_cities)) +
+  # limiting the axis.text to the cities with the most contributions...
+  scale_y_discrete(breaks=c(five_cities)) +
   ggtitle('Individual Contributions to the US Presidential elections\nin the 5 CA cities with the highest number of Contributions') +
   labs(x = 'Amount in USD', y = 'Cities with more than 30 000 contributions')
 
@@ -909,12 +963,14 @@ Another interesting feature of this graph are the clear **vertical lines**. Thes
 
 ## Plot Three
 
-```{r echo=FALSE, warning=FALSE, Plot_Three}
+```{r Plot_Three}
 
 # plotting the graph for current candidates
 ggplot(current_cands, aes(x = contb_emp_status, y = cand_nm)) +
   geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
-  scale_size_area(name="Scale of\nproportions\n(of number of\ncontributions\nreceived)", max_size = 20) +
+  scale_size_area(
+    name="Scale of\nproportions\n(of number of\ncontributions\nreceived)",
+    max_size = 20) +
   ggtitle('Number of Contributions to US Presidential Candidates 2016\nby Employment Status') +
   labs(x = 'Employment Status of Contributor', y = 'Candidate Name') +
   scale_color_discrete(name="Political Party",
