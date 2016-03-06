@@ -9,7 +9,9 @@ output:
 ---
 ```{r global_options, include=FALSE}
 # setting global chunk options to avoid printing r-code, messages and warnings
-knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+# left in one line even though more than 80 characters,
+# because the source read 'no linebreaks!'
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='graphs/', echo=FALSE, message=FALSE, warning=FALSE)
 ```
 
 ```{r packages}
@@ -204,6 +206,9 @@ mean_contrib_per_cand$count <- table(df$cand_nm)
 ggplot(df, aes(cand_nm, contb_receipt_amt)) +
   geom_boxplot() + 
   theme(axis.text.x = element_text(angle = 90))
+
+# TODO: add the median amount as a line plot?
+
 ```
 
 Constructing a frequency plot makes me see something about _Sanders, Bernard_ (who has a big dot low down). Some candidates have a small distribution, and some a wider one, there is another person with a big dot at the bottom, yet also a quite big one higher up (i think this is _Clinton, Hillary_); and further one person with a very high distribution up and down, but also a strong base it seems (_Cruz, Ted_?).
@@ -229,7 +234,9 @@ ggplot(mean_contrib_per_cand,
   geom_density() + 
   coord_flip()
 # label is also a cool way to do it, but better this!
-# IDEA: plot mean amount of contribution vs. number of contributions
+# TODO: plot mean amount of contribution vs. number of contributions
+# TODO: add the median amount as a line plot?
+
 ```
 
 ---
@@ -385,24 +392,36 @@ I'll start with a generous binwidth of 1000:
 df$money_bin <- cut(df$contb_receipt_amt, breaks = seq(0, 11000, by = 1000))
 #head(df)
 # we can make this look nicer using a function:
-money.cat <- function(x, lower = 0, upper, by = 1000,
+MoneyCategories <- function(x, lower = 0, upper, by = 1000,
                    sep = "-", above.char = "+") {
-
- labs <- c(paste(seq(lower, upper - by, by = by),
+  # Orders numerical entries of a column into an array of categorical bins.
+  #
+  # Args:
+  #   x: a numerical vector of a data.frame to be binned
+  #   lower: the lower binwidth limit; set to 0
+  #   upper: the upper binwidth limit
+  #   by: the size of one bin; set to 1000
+  #
+  #
+  # Returns: 
+  #   the rows of column x with it's entries binned categorically.
+  labs <- c(paste(seq(lower, upper - by, by = by),
                  seq(lower + by - 1, upper - 1, by = by),
                  sep = sep),
            paste(upper, above.char, sep = ""))
 
- cut(floor(x), breaks = c(seq(lower, upper, by = by), Inf),
+  cut(floor(x), breaks = c(seq(lower, upper, by = by), Inf),
      right = FALSE, labels = labs)
 }
 
 # and assign the values with the prettified labels to the new colum
-df$money_bin <- money.cat(df$contb_receipt_amt, upper = 11000)
+df$money_bin <- MoneyCategories(df$contb_receipt_amt, upper = 11000)
 #head(df)
 # looks better now :)
 
-ggplot(df, aes(money_bin)) + geom_bar(stat = 'count')
+ggplot(df, aes(money_bin)) +
+  geom_bar(stat = 'count') +
+  theme(axis.text.x = element_text(angle = 45))
 
 ```
 
@@ -438,7 +457,7 @@ I'll go forward displaying proportions of female/male candidates in the respecti
 
 ggplot(df, aes(x = cand_gender, y = cand_party)) + 
   geom_count(aes(size = ..prop.., group = cand_party)) +
-  scale_size_area(max_size = 10)
+  scale_size_area(max_size = 30)
   
 ```
 
@@ -524,7 +543,7 @@ Let's look at the money amassed through the contributions:
 ggplot(df, aes(sum(contb_receipt_amt))) +
   geom_histogram() +
   facet_wrap(~cand_nm) +
-  theme(axis.text.x = element_blank())
+  theme(axis.text.x = element_text(angle = 45))
 
 ```
 
@@ -564,7 +583,7 @@ ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) +
   # removing the ticks & text of the y axis, because there are too many to show
   theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
 
-# IDEA: clean it up, remove cities (keep only the ones that gave the most
+# TODO: clean it up, remove cities (keep only the ones that gave the most
 # money in total), research regarding contribution limits; maybe color dots 
 # regarding which party was donated to
 
@@ -669,7 +688,7 @@ total_contribs, ave(POPESTIMATE2012, contbr_city, FUN=min) == POPESTIMATE2012
   ), ]
 head(total_contribs)
 
-# IDEA: plot the relations in a meaningful graph (or graphs!)
+# TODO: plot the relations in a meaningful graph (or graphs!)
 
 ```
 
@@ -897,14 +916,21 @@ c_party_cand_money$cand_nm_ord <- factor(c_party_cand_money$cand_nm,
 # I'll employ a function to display the amounts more accessible.
 # Resource: http://stackoverflow.com/questions/11610377/how-do-i-change-the-formatting-of-numbers-on-an-axis-with-ggplot
 fancy_scientific <- function(l) {
-     # turn in to character string in scientific notation
-     l <- format(l, scientific = TRUE)
-     # quote the part before the exponent to keep all the digits
-     l <- gsub("^(.*)e", "'\\1'e", l)
-     # turn the 'e+' into plotmath format
-     l <- gsub("e", "%*%10^", l)
-     # return this as an expression
-     parse(text=l)
+  # Formats a number in the following way "#*10^#"
+  #
+  # Args:
+  #   l: eventually the label text
+  #
+  # Returns:
+  #   the number as the formatted label as an expression
+  #
+  l <- format(l, scientific = TRUE)
+  # quote the part before the exponent to keep all the digits
+  l <- gsub("^(.*)e", "'\\1'e", l)
+  # turn the 'e+' into plotmath format
+  l <- gsub("e", "%*%10^", l)
+  # return this as an expression
+  parse(text=l)
 }
 # plot the graph
 ggplot(c_party_cand_money,
@@ -913,7 +939,7 @@ ggplot(c_party_cand_money,
   scale_y_continuous(labels=fancy_scientific) +
   geom_bar(stat='identity', alpha=0.8) +
   ggtitle('Individual Contributions to the 2016 Presidential Elections') +
-  theme(plot.title = element_text(size = 14)) +
+  theme(plot.title = element_text(size = 25)) +
   labs(x = 'Political Party', y = 'Amount in USD') +
   guides(fill=guide_legend(title="Candidates"))
 
@@ -945,8 +971,9 @@ ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) +
   #scale_y_discrete(limits=c(five_cities)) +
   # limiting the axis.text to the cities with the most contributions...
   scale_y_discrete(breaks=c(five_cities)) +
-  ggtitle('Individual Contributions to the US Presidential elections\nin the 5 CA cities with the highest number of Contributions') +
-  labs(x = 'Amount in USD', y = 'Cities with more than 30 000 contributions')
+  ggtitle('Individual Contributions to the US Presidential elections in the CA cities') +
+  theme(plot.title = element_text(size = 25)) +
+  labs(x = 'Amount in USD', y = 'All CA Cities (those with 30 000+ contributions are labeled)')
 
 ```
 
@@ -970,8 +997,9 @@ ggplot(current_cands, aes(x = contb_emp_status, y = cand_nm)) +
   geom_count(aes(size = ..prop.., group = cand_party, color=cand_party)) +
   scale_size_area(
     name="Scale of\nproportions\n(of number of\ncontributions\nreceived)",
-    max_size = 20) +
+    max_size = 30) +
   ggtitle('Number of Contributions to US Presidential Candidates 2016\nby Employment Status') +
+  theme(plot.title = element_text(size = 25)) +
   labs(x = 'Employment Status of Contributor', y = 'Candidate Name') +
   scale_color_discrete(name="Political Party",
                          breaks=c('D', 'R'),
