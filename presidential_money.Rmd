@@ -96,7 +96,7 @@ In order to be able to load the data, I had to add a comma at the end of the hea
 
 ```{r Load_the_Data}
 # Load the Data
-setwd('~/Desktop/p4_US_campaign_funding')
+setwd('~/Desktop/DAND_P4/p4_US_campaign_funding')
 df <- read.csv('P00000001-CA.csv')
 #names(df)
 ```
@@ -211,7 +211,7 @@ ggplot(df, aes(cand_nm, contb_receipt_amt)) +
 
 ```
 
-Constructing a frequency plot makes me see something about _Sanders, Bernard_ (who has a big dot low down). Some candidates have a small distribution, and some a wider one, there is another person with a big dot at the bottom, yet also a quite big one higher up (i think this is _Clinton, Hillary_); and further one person with a very high distribution up and down, but also a strong base it seems (_Cruz, Ted_?).
+Constructing a frequency plot makes me see something about _Sanders, Bernard_ (who has a big dot low down). Some candidates have a small distribution, and some a wider one, there is another person with a big dot at the bottom, yet also a quite big one higher up (_Clinton, Hillary_); and further one person with a very high distribution up and down, but also a strong base it seems (_Cruz, Ted_). Also _Carson, Benjamin_ shows a large number of contributions in the lower amounts.
 
 ```{r Exploring_Most_Money_1_2}
 ggplot(df, aes(contb_receipt_amt, cand_nm)) +
@@ -741,7 +741,7 @@ nrow(most_contribs) / nrow(df) * 100
 
 ```
 
-I'm more of a contry-boy myself and have enough of these cities, so I'll now move forward to investigate another question. :)
+Well... but somehow I'm more of a country-boy myself. For now I have enough of these cities, so I'll now move forward to investigate another question. :)
 
 ---
 
@@ -752,9 +752,9 @@ Here I'm trying to investigate a little bit into the political direction that ho
 
 However, I understand that this is highly hypothetical, because I only have data of **monetary contributions**, that **"NOT EMPLOYED"** people gave for the presidential campaigns.
 Of course giving money != political orientation (It might be a good proxy, however what I'm trying to say is, that it's not an exhaustive factor. Many people might have a political orientation, however did not contribute to the campaigns monetarily. This might be especially true for homeless people, who are very likely to have very little money at their hands).
-Further, NOT EMPLOYED != homeless. There are quite a few people that are employed, but homeless in the US. Assuming that they would give a contribution, they would fall into a different category.
+Further, NOT EMPLOYED != homeless. There are quite a few people that are employed, but homeless in the US. Assuming that they would give a contribution, they would fall into a different category. It is also true that NOT EMPLOYED could be people that are currently simply not working in the official job market. Stay-at-home mums and dads would qualify for this section of society, and they might make up a rather larger number of contributors. These factors have to be considered when looking at the results further down.
 
-These graphs are not gonna show much about how much money was flowing, but rather is intended as a proxy on where does a certain section of society lean towards politically.
+The following graphs are not gonna show much about how much money was flowing, but rather is intended as a proxy on where does a certain section of society lean towards politically.
 
 ```{r Exploring_Unemployment_1}
 
@@ -820,7 +820,7 @@ And it seems that apart from Trump, Donald J. there is no Republican currently l
 
 When increasing the `max_size` also here it becomes even more clear how great the difference between Sanders, Bernard and the other candidates is in this aspect.
 
-**NOTE:** `NOT EMPLOYED` probably also includes **college students**! Which makes sense because Sanders wants to take away college debt, so he has a big bunch of the students on his side (I heard of 83% somewhere).
+**NOTE:** `NOT EMPLOYED` probably also includes **college students**! Which makes sense because Sanders wants to take away college debt, so he has a big bunch of the students on his side (I heard of approximately 80% somewhere).
 
 Let's look at this in another way:
 
@@ -963,7 +963,8 @@ Here **Hillary Clinton** sticks out with an amazingly big sum of contribution-mo
 
 ## Plot Two
 
-```{r Plot_Two}
+```{r fig.height=16, Plot_Two}
+# adapting the global fig.height knitr-property to make the graph more readable
 
 ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) +
   geom_jitter(alpha=0.1) + 
@@ -971,17 +972,18 @@ ggplot(only_contribs, aes(contb_receipt_amt, contbr_city)) +
   #scale_y_discrete(limits=c(five_cities)) +
   # limiting the axis.text to the cities with the most contributions...
   scale_y_discrete(breaks=c(five_cities)) +
-  ggtitle('Individual Contributions to the US Presidential elections in the CA cities') +
+  ggtitle('Individual Contributions to US Presidential elections in CA cities') +
   theme(plot.title = element_text(size = 25)) +
-  labs(x = 'Amount in USD', y = 'All CA Cities (those with 30 000+ contributions are labeled)')
+  labs(x = 'Amount in USD',
+       y = 'All CA Cities (those with 30 000+ contributions are labeled)')
 
 ```
 
 ## Description Two
 
-The graph shows the 5 cities in California, where the highest number of contributions were given to the candidates of the 2016 presidential elections.
+The graph shows all contributions to the candidates of the 2016 presidential elections, arranged by cities in California. The 5 cities where the highest number of contributions were given are labeled on the y-axis.
 
-While most of them are also among the 5 most populous cities in CA, **Oakland** holds only the 8th place in [that ranking](https://en.wikipedia.org/wiki/List_of_largest_California_cities_by_population).
+While most of these cities are also among the 5 most populous cities in CA, **Oakland** holds only the 8th place in [that ranking](https://en.wikipedia.org/wiki/List_of_largest_California_cities_by_population).
 This means that it has an unusually high ratio of contributions per capita.
 
 Another interesting feature of this graph are the clear **vertical lines**. These lines denote most likely full-number-amounts and/or contribution-limits defined by law.
