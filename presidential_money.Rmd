@@ -207,11 +207,44 @@ ggplot(df, aes(cand_nm, contb_receipt_amt)) +
   geom_boxplot() + 
   theme(axis.text.x = element_text(angle = 90))
 
-# TODO: add the median amount as a line plot?
-
 ```
 
 Constructing a frequency plot makes me see something about _Sanders, Bernard_ (who has a big dot low down). Some candidates have a small distribution, and some a wider one, there is another person with a big dot at the bottom, yet also a quite big one higher up (_Clinton, Hillary_); and further one person with a very high distribution up and down, but also a strong base it seems (_Cruz, Ted_). Also _Carson, Benjamin_ shows a large number of contributions in the lower amounts.
+
+```{r Exploring_Most_Money_1_x_add_on}
+
+# thinking about binning data and about displaying statistical values in graphs
+# thanks: https://discussions.udacity.com/t/plotting-statistical-overlays/167266/2
+
+df.mean <- aggregate(df['contb_receipt_amt'], df['cand_nm'], mean)
+df.median <- aggregate(df['contb_receipt_amt'], df['cand_nm'], median)
+
+# median line plot on mean bar chart
+ggplot(df.mean, aes(cand_nm, contb_receipt_amt)) +
+  geom_bar(stat = 'identity', fill='lightblue') +
+  ggtitle('median point plot on mean bar chart') +
+  labs(x = 'candidate',
+       y = '(mean) contribution $') +
+  theme(axis.text.x = element_text(angle = 90)) +
+  geom_point(data = df.median,
+             aes(x=cand_nm, y=contb_receipt_amt, group=1),
+             size=1, color="orange")
+
+# mean line plot on median bar chart  
+ggplot(df.median, aes(cand_nm, contb_receipt_amt)) +
+  geom_bar(stat = 'identity', fill='orange') +
+  ggtitle('mean point plot on median bar chart') +
+  labs(x = 'candidate',
+       y = '(median) contribution $') +
+  theme(axis.text.x = element_text(angle = 90)) +
+  geom_point(data = df.mean,
+             aes(x=cand_nm, y=contb_receipt_amt, group=1),
+             size=1, color="lightblue")
+```
+
+This is a try experimenting with visualizing statistical variables, such as the mean or the median, on top of the data.
+
+I chose to display the mean and the median contribution for each candidate in relation to each other.
 
 ```{r Exploring_Most_Money_1_2}
 ggplot(df, aes(contb_receipt_amt, cand_nm)) +
@@ -1105,6 +1138,7 @@ All in all I really enjoyed working on this project, learning to work with `R`, 
 - http://www.r-bloggers.com/how-to-format-your-chart-and-axis-titles-in-ggplot2/
 - http://stackoverflow.com/questions/11610377/how-do-i-change-the-formatting-of-numbers-on-an-axis-with-ggplot
 - http://www.cookbook-r.com/Graphs/Legends_(ggplot2)/
+- https://discussions.udacity.com/t/plotting-statistical-overlays/167266/2
 
 **US politics:**
 
